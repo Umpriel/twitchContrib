@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Twitch Contributions</title>
+    <style>
+        .contribution {
+            border: 1px solid #ccc;
+            margin: 10px;
+            padding: 10px;
+        }
+        .pending { background-color: #fff; }
+        .accepted { background-color: #e6ffe6; }
+        .rejected { background-color: #ffe6e6; }
+    </style>
+</head>
+<body>
+    <h1>Twitch Code Contributions</h1>
+    <div id="contributions">
+        <% contributions.forEach(function(contribution) { %>
+            <div class="contribution <%= contribution.status %>">
+                <p>User: <%= contribution.username %></p>
+                <p>File: <%= contribution.filename %></p>
+                <p>Line: <%= contribution.line_number %></p>
+                <% if (contribution.character_number) { %>
+                    <p>Character: <%= contribution.character_number %></p>
+                <% } %>
+                <pre><code><%= contribution.code %></code></pre>
+                <p>Status: <%= contribution.status %></p>
+                <% if (contribution.status === 'pending') { %>
+                    <button onclick="updateStatus('<%= contribution.id %>', 'accepted')">Accept</button>
+                    <button onclick="updateStatus('<%= contribution.id %>', 'rejected')">Reject</button>
+                <% } %>
+            </div>
+        <% }); %>
+    </div>
+
+    <script>
+        async function updateStatus(id, status) {
+            try {
+                const response = await fetch(`/contributions/${id}/status`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status })
+                });
+                if (response.ok) {
+                    window.location.reload();
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+    </script>
+</body>
+</html> 

@@ -1,0 +1,7 @@
+mkdir twitch-contrib
+cd twitch-contrib
+npm init -y
+npm install --no-fund --no-audit typescript @types/node express @types/express tmi.js @types/tmi.js sqlite3 @types/sqlite3 ejs @types/ejs
+npm install --save-dev ts-node nodemon
+npm install dotenv
+npm install --save-dev @types/tmi.js 

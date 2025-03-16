@@ -1,0 +1,24 @@
+{
+  "scripts": {
+    "start": "nodemon src/server.ts",
+    "build": "tsc",
+    "serve": "node dist/server.js"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/tmi.js": "^1.8.6",
+    "nodemon": "^3.1.9",
+    "ts-node": "^10.9.2"
+  },
+  "dependencies": {
+    "@types/ejs": "^3.1.5",
+    "@types/node": "^22.13.10",
+    "@types/sqlite3": "^3.1.11",
+    "dotenv": "^16.4.7",
+    "ejs": "^3.1.10",
+    "express": "^4.21.2",
+    "sqlite3": "^5.1.7",
+    "tmi.js": "^1.8.5",
+    "typescript": "^5.8.2"
+  }
+}
