@@ -28,7 +28,7 @@ npm install
    - Fill in your Twitch credentials:
      - `TWITCH_CLIENT_ID`: Your bot's client ID
      - `TWITCH_REDIRECT_URI`: http://localhost:3005/auth/twitch/callback
-     - `TWITCH_CLIENT_SECRET`: Your bot
+     - `TWITCH_CLIENT_SECRET`: Your bot secret generated at https://dev.twitch.tv/console. Make sure to set the bot as confidential.
      - `TWITCH_CHANNEL`: Your channel name
      - `PORT`: Web server port (default: 3005)
 
