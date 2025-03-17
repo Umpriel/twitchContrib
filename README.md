@@ -14,7 +14,7 @@ A Twitch bot that allows viewers to suggest code contributions through chat comm
 
 1. Clone the repository:
 ```bash
-git clone <repository-url>
+git clone https://github.com/Umpriel/twitchContrib.git
 cd twitch-contrib
 ```
 
