@@ -26,10 +26,11 @@ npm install
 3. Configure environment variables:
    - Copy `.env.example` to `.env`
    - Fill in your Twitch credentials:
-     - `TWITCH_BOT_USERNAME`: Your bot's username
-     - `TWITCH_BOT_TOKEN`: OAuth token (get from https://twitchapps.com/tmi/)
+     - `TWITCH_CLIENT_ID`: Your bot's client ID
+     - `TWITCH_REDIRECT_URI`: http://localhost:3005/auth/twitch/callback
+     - `TWITCH_CLIENT_SECRET`: Your bot
      - `TWITCH_CHANNEL`: Your channel name
-     - `PORT`: Web server port (default: 3000)
+     - `PORT`: Web server port (default: 3005)
 
 4. Start the application:
 ```bash
