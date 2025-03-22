@@ -4,11 +4,19 @@ A Twitch bot that allows viewers to suggest code contributions through chat comm
 
 ## Features
 
-- Twitch chat command (!contrib) for submitting code suggestions
+- Twitch chat command (!contrib) for submitting code suggestions with syntax highlighting
+- Real-time code formatting with proper indentation
+- Duplicate submission prevention
 - Web interface for reviewing pending contributions
 - Accept/reject workflow for managing submissions
-- SQLite database for storing contributions and user statistics
-- User contribution tracking
+- SQLite database for storing contributions
+- Syntax highlighting for multiple languages
+- User contribution tracking and cooldown system
+
+## Todo
+- Add apply on vscode Feature
+- Add apply on neovim Feature
+
 
 ## Setup
 
@@ -24,49 +32,55 @@ npm install
 ```
 
 3. Configure environment variables:
-   - Copy `.env.example` to `.env`
+   - Copy `.env.example` to `.env.local`
    - Fill in your Twitch credentials:
      - `TWITCH_CLIENT_ID`: Your bot's client ID
-     - `TWITCH_REDIRECT_URI`: http://localhost:3005/auth/twitch/callback
-     - `TWITCH_CLIENT_SECRET`: Your bot secret generated at https://dev.twitch.tv/console. Make sure to set the bot as confidential.
+     - `TWITCH_CLIENT_SECRET`: Your bot secret from https://dev.twitch.tv/console
      - `TWITCH_CHANNEL`: Your channel name
-     - `PORT`: Web server port (default: 3005)
+     - `TWITCH_BOT_USERNAME`: Your bot's username
+     - `TWITCH_OAUTH_TOKEN`: OAuth token for bot authentication (from https://twitchapps.com/tmi/)
 
-4. Start the application:
+4. Start the development server:
 ```bash
-npm start
+npm run dev
 ```
 
 ## Usage
 
 ### Twitch Chat Commands
 
-- Submit a contribution:
+Submit code with automatic formatting:
 ```
-!contrib filename line:123 your code here
+!contrib filename.ext function example() { \n console.log("hello"); \n }
 ```
-- With character position:
+
+Submit code with line number:
 ```
-!contrib filename line:123 char:45 your code here
+!contrib filename.ext line:123 function example() { \n console.log("hello"); \n }
 ```
+
+The code will be automatically formatted with proper indentation and syntax highlighting.
 
 ### Web Interface
 
-Access the web interface at `http://localhost:3000` to:
-- View all contributions
-- Accept or reject pending contributions
-- See contribution status (pending/accepted/rejected)
+Access the web interface at `http://localhost:3005` to:
+- View pending contributions with syntax highlighting
+- Accept or reject submissions
+- View contribution history
+- Refresh contributions in real-time
 
 ## Development
 
+- Development server: `npm run dev`
 - Build: `npm run build`
-- Serve production build: `npm run serve`
-- Development with hot reload: `npm start`
+- Production start: `npm start`
 
 ## Technologies
 
+- Next.js 13
 - TypeScript
-- Express.js
 - TMI.js (Twitch chat integration)
-- SQLite3
-- EJS (templating)
+- SQLite3 with better-sqlite3
+- Tailwind CSS
+- Prism.js for syntax highlighting
+- Heroicons

@@ -1,0 +1,56 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom Prism.js theme overrides */
+pre[class*="language-"] {
+  background: #1e1e1e !important;
+  margin: 0 !important;
+  padding: 1rem !important;
+}
+
+code[class*="language-"] {
+  text-shadow: none !important;
+  background: none !important;
+}
+
+.token.comment {
+  color: #6a9955 !important;
+}
+
+.token.string {
+  color: #ce9178 !important;
+}
+
+.token.number {
+  color: #b5cea8 !important;
+}
+
+.token.keyword {
+  color: #569cd6 !important;
+}
+
+.token.function {
+  color: #dcdcaa !important;
+}
+
+.token.class-name {
+  color: #4ec9b0 !important;
+}
+
+.token.operator {
+  color: #d4d4d4 !important;
+  background: none !important;
+}
+
+.token.punctuation {
+  color: #d4d4d4 !important;
+}
+
+.token.property {
+  color: #9cdcfe !important;
+}
+
+.token.parameter {
+  color: #9cdcfe !important;
+} 
