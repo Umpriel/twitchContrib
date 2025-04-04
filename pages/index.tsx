@@ -8,7 +8,7 @@ import 'prismjs/components/prism-jsx';
 import 'prismjs/components/prism-tsx';
 import 'prismjs/components/prism-css';
 import 'prismjs/components/prism-json';
-import { ArrowPathIcon } from '@heroicons/react/24/outline';
+import { ArrowPathIcon, ClipboardIcon, ClipboardDocumentCheckIcon } from '@heroicons/react/24/outline';
 import db from '../lib/db';
 
 interface Contribution {
@@ -32,6 +32,7 @@ export const getServerSideProps: GetServerSideProps = async () => {
 
 export default function Home({ initialContributions }: { initialContributions: Contribution[] }) {
   const [contributions, setContributions] = useState<Contribution[]>(initialContributions);
+  const [copiedId, setCopiedId] = useState<number | null>(null);
 
   useEffect(() => {
     // Initialize Twitch connection
@@ -76,6 +77,16 @@ export default function Home({ initialContributions }: { initialContributions: C
     }
   };
 
+  const copyToClipboard = async (id: number, code: string) => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch (err) {
+      console.error('Failed to copy code:', err);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100">
       <div className="max-w-[90%] mx-auto p-6">
@@ -113,11 +124,24 @@ export default function Home({ initialContributions }: { initialContributions: C
                       </p>
                     )}
                   </div>
-                  <pre className="font-mono text-sm bg-[#1e1e1e] p-4 rounded-lg border border-gray-700 whitespace-pre overflow-x-auto">
-                    <code className={`language-${getLanguage(contribution.filename)}`}>
-                      {contribution.code}
-                    </code>
-                  </pre>
+                  <div className="relative">
+                    <pre className="font-mono text-sm bg-[#1e1e1e] p-4 rounded-lg border border-gray-700 whitespace-pre overflow-x-auto">
+                      <code className={`language-${getLanguage(contribution.filename)}`}>
+                        {contribution.code}
+                      </code>
+                    </pre>
+                    <button
+                      onClick={() => copyToClipboard(contribution.id, contribution.code)}
+                      className="absolute top-2 right-2 p-2 bg-gray-700 hover:bg-gray-600 rounded-md transition-colors"
+                      title="Copy code"
+                    >
+                      {copiedId === contribution.id ? (
+                        <ClipboardDocumentCheckIcon className="w-5 h-5 text-green-400" />
+                      ) : (
+                        <ClipboardIcon className="w-5 h-5 text-gray-300" />
+                      )}
+                    </button>
+                  </div>
                   <div className="flex gap-3 mt-4">
                     <button
                       onClick={() => updateStatus(contribution.id, 'accepted')}
@@ -159,11 +183,24 @@ export default function Home({ initialContributions }: { initialContributions: C
                       </p>
                     )}
                   </div>
-                  <pre className="font-mono text-sm bg-[#1e1e1e] p-4 rounded-lg border border-gray-700 whitespace-pre overflow-x-auto">
-                    <code className={`language-${getLanguage(contribution.filename)}`}>
-                      {contribution.code}
-                    </code>
-                  </pre>
+                  <div className="relative">
+                    <pre className="font-mono text-sm bg-[#1e1e1e] p-4 rounded-lg border border-gray-700 whitespace-pre overflow-x-auto">
+                      <code className={`language-${getLanguage(contribution.filename)}`}>
+                        {contribution.code}
+                      </code>
+                    </pre>
+                    <button
+                      onClick={() => copyToClipboard(contribution.id, contribution.code)}
+                      className="absolute top-2 right-2 p-2 bg-gray-700 hover:bg-gray-600 rounded-md transition-colors"
+                      title="Copy code"
+                    >
+                      {copiedId === contribution.id ? (
+                        <ClipboardDocumentCheckIcon className="w-5 h-5 text-green-400" />
+                      ) : (
+                        <ClipboardIcon className="w-5 h-5 text-gray-300" />
+                      )}
+                    </button>
+                  </div>
                   <p className={`mt-4 font-semibold ${
                     contribution.status === 'accepted' ? 'text-green-400' : 'text-red-400'
                   }`}>
