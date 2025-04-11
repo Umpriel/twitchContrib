@@ -1,0 +1,11 @@
+{
+    "env": {
+        "TWITCH_CLIENT_ID": "",
+        "TWITCH_CLIENT_SECRET": "",
+        "TWITCH_CHANNEL": "",
+        "TWITCH_REDIRECT_URI": "",
+        "TWITCH_SCOPES": "chat:read chat:edit",
+        "TWITCH_BOT_USERNAME": "",
+        "TWITCH_OAUTH_TOKEN": ""
+    }
+  }
