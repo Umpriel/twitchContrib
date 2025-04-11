@@ -49,15 +49,16 @@ npm run dev
 ```
 
 ### Vercel Deployment
-1. Create a twitch app in https://dev.twitch.tv/console (make it confidential)
-2. Create a new Vercel project and connect it to this repository.
-3. Deploy the project.
-4. If you already made .env file for local just drag and drop the `.env` file into the Vercel settings > environment variables
+1. Fork the repository
+2. Create a twitch app in https://dev.twitch.tv/console (make it confidential)
+3. Create a new Vercel project and connect it to this repository.
+4. Deploy the project.
+5. If you already made .env file for local just drag and drop the `.env` file into the Vercel settings > environment variables
    If not then use the same steps to get the vars then add them to the Vercel environment variables
-5. Go to Storage > create a new database > Neon > It will be automatically added to the environment variables
-6. Redeploy the project from the Vercel dashboard > Deployments > New > Redeploy
-7. Go to https://dev.twitch.tv/console edit your app and setup the redirect uri to your vercel url (e.g. https://{your-vercel-app-url}/api/auth/callback )
-8. You should be all set! if you have any issues create an issue on the github.
+6. Go to Storage > create a new database > Neon > It will be automatically added to the environment variables
+7. Redeploy the project from the Vercel dashboard > Deployments > New > Redeploy
+8. Go to https://dev.twitch.tv/console edit your app and setup the redirect uri to your vercel url (e.g. https://{your-vercel-app-url}/api/auth/callback )
+9. You should be all set! if you have any issues create an issue on the github.
 
 ## Usage
 
