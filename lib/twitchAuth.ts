@@ -52,47 +52,49 @@ const parseContribution = (message: string) => {
     codeStartIndex = 2;
   }
 
-  // Get the rest as code and preserve indentation
-  const code = parts.slice(codeStartIndex)
-    .join(' ')
-    .replace(/\\n/g, '\n')
-    .split('\n')
-    .map((line, index, array) => {
-      const trimmed = line.trim();
-      const indentLevel = array
-        .slice(0, index)
-        .reduce((level, prevLine) => {
-          return level + (prevLine.includes('{') ? 1 : 0) - (prevLine.includes('}') ? 1 : 0);
-        }, 0);
-      return '  '.repeat(indentLevel) + trimmed;
-    })
-    .join('\n');
-
-  if (!code) return null;
-
-  return {
-    filename: filename.replace(/[^a-zA-Z0-9._-]/g, ''), // Sanitize filename
-    lineNumber,
-    code
-  };
+  // Get code (rest of the message)
+  let code = parts.slice(codeStartIndex).join(' ');
+  
+  // Replace \n with actual newlines
+  code = code.replace(/\\n/g, '\n');
+  
+  // Auto-indent the code for better readability
+  const lines = code.split('\n');
+  let indentLevel = 0;
+  const indentedLines = lines.map(line => {
+    const trimmedLine = line.trim();
+    
+    // Adjust indent level based on braces
+    if (trimmedLine.endsWith('{')) {
+      const spaces = '  '.repeat(indentLevel);
+      indentLevel++;
+      return spaces + trimmedLine;
+    } else if (trimmedLine.startsWith('}')) {
+      indentLevel = Math.max(0, indentLevel - 1);
+      const spaces = '  '.repeat(indentLevel);
+      return spaces + trimmedLine;
+    } else {
+      const spaces = '  '.repeat(indentLevel);
+      return spaces + trimmedLine;
+    }
+  });
+  
+  code = indentedLines.join('\n');
+  
+  return { filename, lineNumber, code };
 };
 
 // Check if similar contribution exists
-const hasSimilarContribution = (username: string, filename: string, code: string) => {
+const hasSimilarContribution = async (username: string, filename: string, code: string) => {
   // Normalize the code for comparison but preserve important variations
-  // This should distinguish between 'primary' and 'secondary' variants
   const normalizedCode = code.replace(/\s+/g, ' ').trim();
   
-  const stmt = db.prepare(`
-    SELECT * FROM contributions 
-    WHERE username = ? 
-    AND filename = ? 
-    AND REPLACE(REPLACE(code, '\n', ' '), '  ', ' ') = ?
-    AND created_at > datetime('now', '-1 hour')
-    AND created_at < datetime('now', '-1 second')
-  `);
-  const existing = stmt.get(username, filename, normalizedCode);
-  return !!existing;
+  try {
+    return await db.checkSimilarContribution(username, filename, normalizedCode);
+  } catch (error) {
+    console.error('Error checking for similar contributions:', error);
+    return false;
+  }
 };
 
 chatClient.on('message', async (channel, tags, message, self) => {
@@ -121,18 +123,21 @@ chatClient.on('message', async (channel, tags, message, self) => {
   }
 
   try {
-    // Check for similar existing contributions BEFORE storing the new one
-    if (hasSimilarContribution(username, contribution.filename, contribution.code)) {
+    // Check for similar existing contributions
+    if (await hasSimilarContribution(username, contribution.filename, contribution.code)) {
       chatClient.say(channel, `${username}, you've already submitted similar code recently.`);
       return;
     }
     
-    const stmt = db.prepare(
-      'INSERT INTO contributions (username, filename, line_number, code) VALUES (?, ?, ?, ?)'
+    // Store the contribution
+    await db.createContribution(
+      username, 
+      contribution.filename, 
+      contribution.lineNumber, 
+      contribution.code
     );
-    stmt.run(username, contribution.filename, contribution.lineNumber, contribution.code);
     
-    // Update submission tracking after successful insertion
+    // Update user submission tracking
     userSubmissions[username] = {
       time: now,
       hash: createCodeHash(contribution.filename, contribution.code)

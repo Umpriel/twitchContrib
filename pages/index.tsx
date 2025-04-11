@@ -22,7 +22,7 @@ interface Contribution {
 }
 
 export const getServerSideProps: GetServerSideProps = async () => {
-  const contributions = db.prepare('SELECT * FROM contributions ORDER BY created_at DESC').all();
+  const contributions = await db.getContributions();
   return {
     props: {
       initialContributions: contributions

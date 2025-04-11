@@ -9,7 +9,8 @@ A Twitch bot that allows viewers to suggest code contributions through chat comm
 - Duplicate submission prevention
 - Web interface for reviewing pending contributions
 - Accept/reject workflow for managing submissions
-- SQLite database for storing contributions
+- SQLite database for local development
+- Postgres database for production deployment on Vercel -- Tested with neon
 - Syntax highlighting for multiple languages
 - User contribution tracking and cooldown system
 

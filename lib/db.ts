@@ -1,19 +1,43 @@
-import Database from 'better-sqlite3';
-import path from 'path';
+import { DatabaseAdapter } from './db-interface';
 
-const db = new Database(path.join(process.cwd(), 'contributions.db'));
+// Lazy-loaded adapter instance
+let adapter: DatabaseAdapter | null = null;
 
-// Initialize database
-db.exec(`
-  CREATE TABLE IF NOT EXISTS contributions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT NOT NULL,
-    filename TEXT NOT NULL,
-    line_number INTEGER NULL,
-    code TEXT NOT NULL,
-    status TEXT DEFAULT 'pending',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-`);
+// Get the appropriate adapter based on environment
+const getAdapter = async (): Promise<DatabaseAdapter> => {
+  if (adapter) return adapter;
+  
+  try {
+    // Check if we're in Vercel environment
+    if (process.env.VERCEL) {
+      const { PostgresAdapter } = await import('./db-postgres');
+      adapter = new PostgresAdapter();
+    } else {
+      const { SQLiteAdapter } = await import('./db-sqlite');
+      adapter = new SQLiteAdapter();
+    }
+    
+    // Initialize the database
+    await adapter.init();
+    return adapter;
+  } catch (error) {
+    console.error('Failed to initialize database adapter:', error);
+    throw error;
+  }
+};
+
+// Create a proxy object that will lazily initialize the correct adapter
+const db: DatabaseAdapter = new Proxy({} as DatabaseAdapter, {
+  get: (target, prop) => {
+    return async (...args: any[]) => {
+      const adapter = await getAdapter();
+      const method = adapter[prop as keyof DatabaseAdapter];
+      if (typeof method === 'function') {
+        return (method as Function).apply(adapter, args);
+      }
+      return method;
+    };
+  }
+});
 
 export default db; 

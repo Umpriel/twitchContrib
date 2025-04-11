@@ -24,7 +24,8 @@
     "react-dom": "18.2.0",
     "sqlite": "^5.1.1",
     "sqlite3": "^5.1.7",
-    "tmi.js": "^1.8.5"
+    "tmi.js": "^1.8.5",
+    "@vercel/postgres": "^0.10.0"
   },
   "devDependencies": {
     "autoprefixer": "^10.4.14",

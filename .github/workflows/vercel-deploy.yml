@@ -1,7 +1,7 @@
 name: Vercel Deployment
 on:
   push:
-    branches: [vercel]  # Only trigger on pushes to the vercel branch
+    branches: [main]  # Changed from vercel to main
 
 jobs:
   deploy:
