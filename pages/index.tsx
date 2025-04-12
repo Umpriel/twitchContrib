@@ -10,6 +10,7 @@ import 'prismjs/components/prism-css';
 import 'prismjs/components/prism-json';
 import { ArrowPathIcon, ClipboardIcon, ClipboardDocumentCheckIcon } from '@heroicons/react/24/outline';
 import db from '../lib/db';
+import UserProfile from '../components/UserProfile';
 
 interface Contribution {
   id: number;
@@ -39,6 +40,7 @@ export default function Home({ initialContributions }: { initialContributions: C
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isChannelOwner, setIsChannelOwner] = useState(false);
   const [authCheckComplete, setAuthCheckComplete] = useState(false);
+  const [userInfo, setUserInfo] = useState<{username: string} | null>(null);
 
   useEffect(() => {
     // Check auth status
@@ -49,12 +51,18 @@ export default function Home({ initialContributions }: { initialContributions: C
         
         setIsAuthenticated(data.authenticated);
         setIsChannelOwner(data.isChannelOwner);
-        setAuthCheckComplete(true);
         
-        // Only initialize Twitch if authenticated
         if (data.authenticated) {
+          // Get user info when authenticated
+          const userResponse = await fetch('/api/user');
+          const userData = await userResponse.json();
+          setUserInfo(userData);
+          
+          // Initialize Twitch
           fetch('/api/init-twitch').catch(console.error);
         }
+        
+        setAuthCheckComplete(true);
       } catch (error) {
         console.error('Failed to check auth status:', error);
         setAuthCheckComplete(true);
@@ -198,6 +206,13 @@ export default function Home({ initialContributions }: { initialContributions: C
       ) : (
         <div className="max-w-[90%] mx-auto p-6">
           <h1 className="text-4xl font-bold mb-8 text-purple-400">TwitchContrib</h1>
+          
+          <div className="absolute top-4 right-4">
+            <UserProfile 
+              username={userInfo?.username || 'User'} 
+              isChannelOwner={isChannelOwner} 
+            />
+          </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div className="w-full">
