@@ -1,18 +1,131 @@
 import tmi from 'tmi.js';
 import db from './db';
+import { authProvider, initializeAuth } from './twitchOAuth';
+import path from 'path';
+import fs from 'fs';
 
-if (!process.env.TWITCH_OAUTH_TOKEN || !process.env.TWITCH_CHANNEL) {
-  throw new Error('Missing required Twitch environment variables');
-}
+// Initialize with checks
+const initTwitchAuth = async () => {
+  // Initialize auth
+  const authInitialized = await initializeAuth();
+  
+  if (!authInitialized) {
+    console.error('Twitch authentication not initialized. Please visit /auth-twitch to set up.');
+    throw new Error('Missing Twitch authentication');
+  }
+  
+  if (!process.env.TWITCH_CHANNEL) {
+    throw new Error('Missing required Twitch channel environment variable');
+  }
+  
+  try {
+    // Get access token from the auth provider for use with tmi.js
+    const tokenData = await authProvider.getAnyAccessToken();
+    
+    // Log more useful debug information
+    console.log('Auth details:', {
+      username: process.env.TWITCH_BOT_USERNAME,
+      channel: process.env.TWITCH_CHANNEL,
+      tokenScopes: tokenData.scope
+    });
 
-export const chatClient = new tmi.Client({
-  options: { debug: false }, // Set to false to reduce noise in logs
-  identity: {
-    username: process.env.TWITCH_BOT_USERNAME || 'contrib-bot',
-    password: process.env.TWITCH_OAUTH_TOKEN
-  },
-  channels: [process.env.TWITCH_CHANNEL]
-});
+    // TMI.js requires adding the oauth: prefix in the password field
+    const password = `oauth:${tokenData.accessToken}`;
+
+    // Set up the TMI client with the token
+    return new tmi.Client({
+      options: { debug: true },
+      identity: {
+        username: process.env.TWITCH_BOT_USERNAME,
+        password: password
+      },
+      channels: [process.env.TWITCH_CHANNEL]
+    });
+  } catch (error) {
+    console.error('Failed to get access token:', error);
+    throw new Error('Authentication failed - please reauthorize at /auth-twitch');
+  }
+};
+
+// Create and export a function to get the client
+let chatClientPromise: Promise<tmi.Client> | null = null;
+
+// Initialize the client and set up all handlers
+export const initAndGetChatClient = async () => {
+  if (!chatClientPromise) {
+    chatClientPromise = initTwitchAuth().then(client => {
+      // Set up event handlers on the client
+      client.on('message', async (channel, tags, message, self) => {
+        if (self) return;
+        if (!message.startsWith('!contrib')) return;
+        
+        // Create a more unique message fingerprint that includes username
+        const username = tags.username || '';
+        const messageFingerprint = `${username}:${message.replace(/\s+/g, ' ').trim()}`;
+        const now = Date.now();
+        
+        // Check if we've seen this message recently
+        const lastSeen = recentMessages.get(messageFingerprint);
+        if (lastSeen && now - lastSeen < DUPLICATE_MESSAGE_WINDOW) {
+          console.log(`Duplicate message detected within ${DUPLICATE_MESSAGE_WINDOW}ms:`, messageFingerprint);
+          return;
+        }
+        
+        // Mark this message as processed
+        recentMessages.set(messageFingerprint, now);
+        
+        const contribution = parseContribution(message);
+        if (!contribution) {
+          client.say(channel, 'Usage: !contrib filename.ext [line:123] code \\n for new lines');
+          return;
+        }
+        
+        try {
+          // Check for similar existing contributions
+          if (await hasSimilarContribution(username, contribution.filename, contribution.code)) {
+            client.say(channel, `${username}, you've already submitted similar code recently.`);
+            return;
+          }
+          
+          // Store the contribution
+          await db.createContribution(
+            username, 
+            contribution.filename, 
+            contribution.lineNumber, 
+            contribution.code
+          );
+          
+          // Update user submission tracking
+          userSubmissions[username] = {
+            time: now,
+            hash: createCodeHash(contribution.filename, contribution.code)
+          };
+          
+          client.say(channel, `Contribution received from ${username}! It will be reviewed soon.`);
+        } catch (error) {
+          console.error('Failed to store contribution:', error);
+          client.say(channel, `Sorry ${username}, there was an error storing your contribution.`);
+        }
+      });
+      
+      client.on('connected', () => {
+        console.log('Connected to Twitch chat');
+      });
+      
+      client.on('disconnected', (reason) => {
+        console.error('Disconnected from chat:', reason);
+      });
+      
+      return client;
+    });
+  }
+  return chatClientPromise;
+};
+
+// Export a function to get a connected client
+export const getChatClient = async () => {
+  return initAndGetChatClient();
+};
 
 // Track last submission time and message hash per user
 const userSubmissions: { [key: string]: { time: number; hash: string } } = {};
@@ -97,59 +210,6 @@ const hasSimilarContribution = async (username: string, filename: string, code: 
   }
 };
 
-chatClient.on('message', async (channel, tags, message, self) => {
-  if (self) return;
-  if (!message.startsWith('!contrib')) return;
-
-  // Create a more unique message fingerprint that includes username
-  const username = tags.username || '';
-  const messageFingerprint = `${username}:${message.replace(/\s+/g, ' ').trim()}`;
-  const now = Date.now();
-  
-  // Check if we've seen this message recently
-  const lastSeen = recentMessages.get(messageFingerprint);
-  if (lastSeen && now - lastSeen < DUPLICATE_MESSAGE_WINDOW) {
-    console.log(`Duplicate message detected within ${DUPLICATE_MESSAGE_WINDOW}ms:`, messageFingerprint);
-    return;
-  }
-  
-  // Mark this message as processed
-  recentMessages.set(messageFingerprint, now);
-  
-  const contribution = parseContribution(message);
-  if (!contribution) {
-    chatClient.say(channel, 'Usage: !contrib filename.ext [line:123] code \\n for new lines');
-    return;
-  }
-
-  try {
-    // Check for similar existing contributions
-    if (await hasSimilarContribution(username, contribution.filename, contribution.code)) {
-      chatClient.say(channel, `${username}, you've already submitted similar code recently.`);
-      return;
-    }
-    
-    // Store the contribution
-    await db.createContribution(
-      username, 
-      contribution.filename, 
-      contribution.lineNumber, 
-      contribution.code
-    );
-    
-    // Update user submission tracking
-    userSubmissions[username] = {
-      time: now,
-      hash: createCodeHash(contribution.filename, contribution.code)
-    };
-    
-    chatClient.say(channel, `Contribution received from ${username}! It will be reviewed soon.`);
-  } catch (error) {
-    console.error('Failed to store contribution:', error);
-    chatClient.say(channel, `Sorry ${username}, there was an error storing your contribution.`);
-  }
-});
-
 // Clean up old submission records periodically
 setInterval(() => {
   const now = Date.now();
@@ -181,12 +241,4 @@ setInterval(() => {
   if (cleanupCount > 0) {
     console.log(`Cleaned up ${cleanupCount} outdated message records, ${recentMessages.size} remaining`);
   }
-}, DUPLICATE_MESSAGE_WINDOW);
-
-chatClient.on('connected', () => {
-  console.log('Connected to Twitch chat');
-});
-
-chatClient.on('disconnected', (reason) => {
-  console.error('Disconnected from chat:', reason);
-}); 
+}, DUPLICATE_MESSAGE_WINDOW); 

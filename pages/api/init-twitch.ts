@@ -1,12 +1,15 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { chatClient } from '../../lib/twitchAuth';
+import { getChatClient } from '../../lib/twitchAuth';
 
 let isInitialized = false;
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!isInitialized) {
     try {
-      await chatClient.connect();
+      const chatClient = await getChatClient();
+      if (chatClient.readyState() !== 'OPEN') {
+        await chatClient.connect();
+      }
       isInitialized = true;
       res.status(200).json({ message: 'Twitch chat connected' });
     } catch (error) {

@@ -3,7 +3,6 @@ import type { NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
   const requiredEnvVars = [
-    'TWITCH_OAUTH_TOKEN',
     'TWITCH_CHANNEL',
     'TWITCH_BOT_USERNAME'
   ];

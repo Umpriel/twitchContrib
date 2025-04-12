@@ -7,3 +7,5 @@ vercel.json
 *.db
 *Db.*
 contributions.db
+next.config.js
+.twitch-token.json

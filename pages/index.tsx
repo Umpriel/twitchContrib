@@ -35,8 +35,26 @@ export default function Home({ initialContributions }: { initialContributions: C
   const [copiedId, setCopiedId] = useState<number | null>(null);
 
   useEffect(() => {
-    // Initialize Twitch connection
-    fetch('/api/init-twitch').catch(console.error);
+    // Check token validity
+    const checkToken = async () => {
+      try {
+        const response = await fetch('/api/check-token');
+        const data = await response.json();
+        
+        if (!data.valid) {
+          // Token is expired or invalid, redirect to auth page
+          window.location.href = '/auth-twitch';
+        } else {
+          // Token is valid, initialize Twitch connection
+          fetch('/api/init-twitch').catch(console.error);
+        }
+      } catch (error) {
+        console.error('Failed to check token status:', error);
+      }
+    };
+    
+    checkToken();
+    
     // Highlight all code blocks
     Prism.highlightAll();
   }, [contributions]);
