@@ -2,8 +2,8 @@
 
 A Twitch bot that allows viewers to suggest code contributions through chat commands. The bot stores these suggestions in a database and provides a web interface for reviewing and managing contributions.
 
-<details>
-<summary><strong>Features</strong> (click to expand)</summary>
+
+### Features
 
 - Twitch chat command (!contrib) for submitting code suggestions with syntax highlighting
 - Real-time code formatting with proper indentation
@@ -14,7 +14,6 @@ A Twitch bot that allows viewers to suggest code contributions through chat comm
 - Postgres database for production deployment on Vercel -- Tested with neon
 - Syntax highlighting for multiple languages
 - User contribution tracking and cooldown system
-</details>
 
 <details>
 <summary><strong>Todo</strong> (click to expand)</summary>
@@ -48,7 +47,7 @@ npm install
      - `TWITCH_CHANNEL`: Your channel name
      - `NEXT_PUBLIC_TWITCH_REDIRECT_URI`: http://localhost:3005/api/auth/callback
      - `TWITCH_SCOPES`: chat:read chat:edit
-     - `TWITCH_BOT_USERNAME`: Your bot's username - from the console
+     - `TWITCH_BOT_USERNAME`: Your bot's username it has to be Kebab case (e.g. my-bot-name) and not include "twitch" in it - from the console
 5. Start the development server:
 ```bash
 npm run dev
@@ -59,8 +58,9 @@ npm run dev
 2. Create a twitch app in [console](https://dev.twitch.tv/console) (make it confidential)
 3. Create a new Vercel project and connect it to this repository.
 4. Deploy the project.
+`note:` make sure to copy the short url from the Vercel project to be used in the next step.
 5. If you already made .env file from local development just drag and drop the `.env` file into the Vercel settings > environment variables
-   If not then use the same steps in local development to get the vars then add them to the Vercel environment variables
+   If not then use the same steps in local development to get the vars then add them to the Vercel environment variables. The redirct uri has to be https://{your-vercel-app-url}/api/auth/callback
 6. Go to Storage > create a new database > Neon > It will be automatically added to the environment variables
 7. Redeploy the project from the Vercel dashboard > Deployments > New > Redeploy
 8. Go to https://dev.twitch.tv/console edit your app and setup the redirect uri to your vercel url (e.g. https://{your-vercel-app-url}/api/auth/callback )
