@@ -59,7 +59,7 @@ npm run dev
 2. Create a twitch app in [console](https://dev.twitch.tv/console) (make it confidential)
 3. Create a new Vercel project and connect it to this repository.
 4. Deploy the project.
-5. If you already made .env file for local just drag and drop the `.env` file into the Vercel settings > environment variables
+5. If you already made .env file from local development just drag and drop the `.env` file into the Vercel settings > environment variables
    If not then use the same steps in local development to get the vars then add them to the Vercel environment variables
 6. Go to Storage > create a new database > Neon > It will be automatically added to the environment variables
 7. Redeploy the project from the Vercel dashboard > Deployments > New > Redeploy
