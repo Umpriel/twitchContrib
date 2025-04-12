@@ -1,4 +1,4 @@
-import { DatabaseAdapter } from './db-interface';
+import { DatabaseAdapter, Contribution } from './db-interface';
 
 // Lazy-loaded adapter instance
 let adapter: DatabaseAdapter | null = null;

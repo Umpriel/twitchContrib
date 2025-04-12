@@ -87,6 +87,29 @@ export default function Home({ initialContributions }: { initialContributions: C
     }
   };
 
+  const sendToVSCodeWithPath = async (id: number) => {
+    try {
+      // Ask for path (optional)
+      const filePath = prompt(
+        "Enter path where file should be created (optional):\n" +
+        "Leave blank to select in VSCode, or enter a path on your system.",
+        ""
+      );
+      
+      await fetch('/api/send-to-vscode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, filePath })
+      });
+      
+      // Show success message
+      alert('Contribution sent to VSCode!');
+    } catch (error) {
+      console.error('Failed to send to VSCode:', error);
+      alert('Failed to send to VSCode. Make sure the VSCode extension is installed and running.');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100">
       <div className="max-w-[90%] mx-auto p-6">
@@ -206,6 +229,17 @@ export default function Home({ initialContributions }: { initialContributions: C
                   }`}>
                     Status: {contribution.status.charAt(0).toUpperCase() + contribution.status.slice(1)}
                   </p>
+                  {contribution.status === 'accepted' && (
+                    <button
+                      onClick={() => sendToVSCodeWithPath(contribution.id)}
+                      className="mt-2 flex items-center gap-2 px-3 py-2 bg-blue-500 hover:bg-blue-600 rounded-md transition-colors"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M8 4H6a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-2m-4-1v8m0 0l-4-4m4 4l4-4" />
+                      </svg>
+                      <span>Send to VSCode</span>
+                    </button>
+                  )}
                 </div>
               ))}
             </div>

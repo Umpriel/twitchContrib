@@ -1,0 +1,48 @@
+{
+  "name": "twitchcontrib",
+  "displayName": "TwitchContrib",
+  "description": "Apply code contributions from TwitchContrib app",
+  "version": "0.1.0",
+  "publisher": "twitchcontrib-publisher",
+  "engines": {
+    "vscode": "^1.60.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Umpriel/twitchContrib.git"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "twitchcontrib.test",
+        "title": "Test TwitchContrib Extension"
+      },
+      {
+        "command": "twitchcontrib.selectRoot",
+        "title": "TwitchContrib: Select Repository Root"
+      },
+      {
+        "command": "twitchcontrib.setManualPath",
+        "title": "TwitchContrib: Set Manual Path Override"
+      },
+      {
+        "command": "twitchcontrib.showPaths",
+        "title": "TwitchContrib: Show Current Paths"
+      },
+      {
+        "command": "twitchcontrib.createFile",
+        "title": "TwitchContrib: Create New File"
+      }
+    ]
+  },
+  "dependencies": {
+    "vsce": "^2.15.0"
+  }
+}

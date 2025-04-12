@@ -2,7 +2,8 @@
 
 A Twitch bot that allows viewers to suggest code contributions through chat commands. The bot stores these suggestions in a database and provides a web interface for reviewing and managing contributions.
 
-## Features
+<details>
+<summary><strong>Features</strong> (click to expand)</summary>
 
 - Twitch chat command (!contrib) for submitting code suggestions with syntax highlighting
 - Real-time code formatting with proper indentation
@@ -13,13 +14,17 @@ A Twitch bot that allows viewers to suggest code contributions through chat comm
 - Postgres database for production deployment on Vercel -- Tested with neon
 - Syntax highlighting for multiple languages
 - User contribution tracking and cooldown system
+</details>
 
-## Todo
-- Add apply on vscode Feature
+<details>
+<summary><strong>Todo</strong> (click to expand)</summary>
+
+- Add apply on vscode Feature -- completed for local. need to do for vercel
 - Add apply on neovim Feature
+</details>
 
-
-## Setup
+<details>
+<summary><strong>Setup</strong> (click to expand)</summary>
 
 ### Local Development
 1. Clone the repository:
@@ -59,8 +64,10 @@ npm run dev
 7. Redeploy the project from the Vercel dashboard > Deployments > New > Redeploy
 8. Go to https://dev.twitch.tv/console edit your app and setup the redirect uri to your vercel url (e.g. https://{your-vercel-app-url}/api/auth/callback )
 9. You should be all set! if you have any issues create an issue on the github.
+</details>
 
-## Usage
+<details>
+<summary><strong>Usage</strong> (click to expand)</summary>
 
 ### Twitch Chat Commands
 
@@ -83,14 +90,18 @@ Access the web interface at `http://localhost:3005` to:
 - Accept or reject submissions
 - View contribution history
 - Refresh contributions in real-time
+</details>
 
-## Development
+<details>
+<summary><strong>Development</strong> (click to expand)</summary>
 
 - Development server: `npm run dev`
 - Build: `npm run build`
 - Production start: `npm start`
+</details>
 
-## Technologies
+<details>
+<summary><strong>Technologies</strong> (click to expand)</summary>
 
 - Next.js 13
 - TypeScript
@@ -99,3 +110,50 @@ Access the web interface at `http://localhost:3005` to:
 - Tailwind CSS
 - Prism.js for syntax highlighting
 - Heroicons
+</details>
+
+<details>
+<summary><strong>VSCode Integration</strong> (click to expand)</summary>
+
+The TwitchContrib VSCode extension allows you to receive code contributions directly into your editor, with files created in the correct location and code inserted at specific line numbers.
+
+### Installation
+
+1. Install the TwitchContrib VSCode extension:
+   - Navigate to the `extensions/vscode-contrib` directory
+   - Run `npm install` (if needed)
+   - Install the VSCE tool: `npm install -g @vscode/vsce` (or `npm install -g @vscode/vsce`)
+   - Package the extension: `vsce package` (or use `npx @vscode/vsce package`)
+   - Install the extension in VSCode: `code --install-extension twitchcontrib-0.1.0.vsix`
+
+2. Once installed, the extension will automatically start a local server on port 54321.
+
+### Usage
+
+1. **Project Root Detection**: The extension automatically detects your workspace folder as the repository root when:
+   - VSCode first starts with the extension active
+   - When you receive your first contribution (if no root was set before)
+
+2. **Sending Contributions**:
+   - In the TwitchContrib web interface, accepted contributions will have a "Send to VSCode" button
+   - When clicked, you can optionally specify a relative path for the file
+   - The file will be created/updated in your project, and opened in the editor
+
+3. **Available Commands** (Access via Command Palette - Ctrl+Shift+P):
+   - `TwitchContrib: Select Repository Root` - Manually choose your project root folder
+   - `TwitchContrib: Set Manual Path Override` - Specify an absolute path to use instead of workspace folder
+   - `TwitchContrib: Show Current Paths` - Display which paths are currently configured
+   - `TwitchContrib: Create New File` - Create a new file in your project
+
+4. **Path Priority**:
+   - Manual path override (if set)
+   - Repository root path
+   - Current workspace folder
+   - User prompt as fallback
+
+### Troubleshooting
+
+- If files are created in the wrong location, use the `TwitchContrib: Show Current Paths` command to check your current configuration
+- Use `TwitchContrib: Set Manual Path Override` to explicitly set the base path for all contributions
+- To reset the manual path override, run the command and leave the input field empty
+</details>
