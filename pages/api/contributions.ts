@@ -1,8 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import db from '../../lib/db';
+import { withAuth } from '../../lib/authMiddleware';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'GET') {
+    // Allow reading contributions without auth
     try {
       const contributions = await db.getContributions();
       return res.status(200).json(contributions);
@@ -13,14 +15,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   if (req.method === 'PUT') {
-    try {
-      const { id, status } = req.body;
-      await db.updateStatus(id, status);
-      return res.status(200).json({ message: 'Status updated successfully' });
-    } catch (error) {
-      console.error('Error updating status:', error);
-      return res.status(500).json({ error: 'Failed to update status' });
-    }
+    // Require auth for updating contributions
+    return withAuth(req, res, async (req, res) => {
+      try {
+        const { id, status } = req.body;
+        await db.updateStatus(id, status);
+        return res.status(200).json({ message: 'Status updated successfully' });
+      } catch (error) {
+        console.error('Error updating status:', error);
+        return res.status(500).json({ error: 'Failed to update status' });
+      }
+    });
   }
 
   res.status(405).json({ message: 'Method not allowed' });

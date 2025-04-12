@@ -1,55 +1,67 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
+import { NextApiRequest, NextApiResponse } from 'next';
+import { exchangeCode, refreshAuthToken } from '../../../lib/twitchAuth';
+import db from '../../../lib/db';
+import { serialize } from 'cookie';
 
-export default function handler(req: NextApiRequest, res: NextApiResponse) {
-  const { code, scope, error } = req.query;
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  const { code } = req.query;
   
-  if (error) {
-    return res.status(400).send(`
-      <html>
-        <body>
-          <h1>Authorization Failed</h1>
-          <p>Error: ${error}</p>
-          <script>window.close();</script>
-        </body>
-      </html>
-    `);
+  if (!code || typeof code !== 'string') {
+    return res.status(400).json({ error: 'Missing authorization code' });
   }
   
-  if (!code) {
-    return res.status(400).send(`
-      <html>
-        <body>
-          <h1>Missing Authorization Code</h1>
-          <script>window.close();</script>
-        </body>
-      </html>
-    `);
+  try {
+    // Exchange the code for tokens
+    const tokenData = await exchangeCode(code);
+    
+    // Get user info from Twitch
+    const userInfo = await getUserInfo(tokenData.access_token);
+    
+    // Check if this user is the channel owner
+    const isChannelOwner = userInfo.login.toLowerCase() === 
+      process.env.TWITCH_CHANNEL?.toLowerCase();
+    
+    // Save user to database
+    await db.createOrUpdateUser({
+      id: userInfo.id,
+      username: userInfo.login,
+      is_channel_owner: isChannelOwner,
+      access_token: tokenData.access_token,
+      refresh_token: tokenData.refresh_token,
+      token_expires_at: Date.now() + (tokenData.expires_in * 1000)
+    });
+    
+    // Set a secure cookie with the user's ID
+    const cookie = serialize('twitch_user_id', userInfo.id, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 30 * 24 * 60 * 60, // 30 days
+      path: '/'
+    });
+    
+    res.setHeader('Set-Cookie', cookie);
+    
+    // Redirect to home page
+    res.redirect('/');
+  } catch (error) {
+    console.error('Auth callback error:', error);
+    res.status(500).json({ error: 'Authentication failed' });
+  }
+}
+
+async function getUserInfo(accessToken: string) {
+  const response = await fetch('https://api.twitch.tv/helix/users', {
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Client-ID': process.env.NEXT_PUBLIC_TWITCH_CLIENT_ID!
+    }
+  });
+  
+  if (!response.ok) {
+    throw new Error('Failed to get user info from Twitch');
   }
   
-  // Send code to our API endpoint and redirect to homepage
-  return res.status(200).send(`
-    <html>
-      <body>
-        <h1>Authorization Successful!</h1>
-        <p>Redirecting you to the homepage...</p>
-        <script>
-          fetch('/api/auth/twitch?code=${code}')
-            .then(response => response.json())
-            .then(data => {
-              console.log(data);
-              if (window.opener && !window.opener.closed) {
-                window.opener.location.href = '/';
-                setTimeout(() => window.close(), 1000);
-              } else {
-                window.location.href = '/';
-              }
-            })
-            .catch(error => {
-              console.error('Authentication error:', error);
-              document.body.innerHTML += '<p style="color:red">Error during authentication. Please try again.</p>';
-            });
-        </script>
-      </body>
-    </html>
-  `);
+  const data = await response.json();
+  return data.data[0];
 } 

@@ -1,5 +1,5 @@
 import { sql } from '@vercel/postgres';
-import { DatabaseAdapter, Contribution } from './db-interface';
+import { DatabaseAdapter, Contribution, User } from './db-interface';
 
 export class PostgresAdapter implements DatabaseAdapter {
   async init(): Promise<void> {
@@ -15,8 +15,20 @@ export class PostgresAdapter implements DatabaseAdapter {
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
       `;
+      
+      await sql`
+        CREATE TABLE IF NOT EXISTS users (
+          id TEXT PRIMARY KEY,
+          username TEXT UNIQUE NOT NULL,
+          is_channel_owner BOOLEAN DEFAULT FALSE,
+          access_token TEXT NOT NULL,
+          refresh_token TEXT NOT NULL,
+          token_expires_at BIGINT NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `;
     } catch (error) {
-      console.error('Failed to initialize Postgres table:', error);
+      console.error('Failed to initialize Postgres tables:', error);
     }
   }
 
@@ -92,5 +104,31 @@ export class PostgresAdapter implements DatabaseAdapter {
       console.error('PostgreSQL query error:', error, { sql: sqlStatement });
       throw error;
     }
+  }
+
+  async createOrUpdateUser(user: Omit<User, 'created_at'>): Promise<User> {
+    const result = await sql`
+      INSERT INTO users (id, username, is_channel_owner, access_token, refresh_token, token_expires_at)
+      VALUES (${user.id}, ${user.username}, ${user.is_channel_owner}, ${user.access_token}, ${user.refresh_token}, ${user.token_expires_at})
+      ON CONFLICT (id) DO UPDATE SET
+        username = ${user.username},
+        is_channel_owner = ${user.is_channel_owner},
+        access_token = ${user.access_token},
+        refresh_token = ${user.refresh_token},
+        token_expires_at = ${user.token_expires_at}
+      RETURNING *;
+    `;
+    
+    return result.rows[0] as User;
+  }
+
+  async getUserByUsername(username: string): Promise<User | null> {
+    const result = await sql`SELECT * FROM users WHERE username = ${username}`;
+    return result.rows.length > 0 ? (result.rows[0] as User) : null;
+  }
+
+  async getUserById(id: string): Promise<User | null> {
+    const result = await sql`SELECT * FROM users WHERE id = ${id}`;
+    return result.rows.length > 0 ? (result.rows[0] as User) : null;
   }
 } 

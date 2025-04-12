@@ -11,12 +11,15 @@
     "@twurple/auth": "^7.2.1",
     "@twurple/chat": "^7.2.1",
     "@types/better-sqlite3": "^7.6.13",
+    "@types/cookie": "^1.0.0",
     "@types/node": "^22.14.0",
     "@types/prismjs": "^1.26.5",
     "@types/react": "^18.2.61",
     "@types/react-dom": "^18.2.19",
     "@types/tmi.js": "^1.8.6",
+    "@vercel/postgres": "^0.10.0",
     "better-sqlite3": "^11.9.1",
+    "cookie": "^1.0.2",
     "dotenv": "^16.4.7",
     "next": "15.2.4",
     "prismjs": "^1.30.0",
@@ -24,8 +27,7 @@
     "react-dom": "18.2.0",
     "sqlite": "^5.1.1",
     "sqlite3": "^5.1.7",
-    "tmi.js": "^1.8.5",
-    "@vercel/postgres": "^0.10.0"
+    "tmi.js": "^1.8.5"
   },
   "devDependencies": {
     "autoprefixer": "^10.4.14",

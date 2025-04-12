@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3';
 import path from 'path';
-import { DatabaseAdapter, Contribution } from './db-interface';
+import { DatabaseAdapter, Contribution, User } from './db-interface';
 
 export class SQLiteAdapter implements DatabaseAdapter {
   private db: Database.Database;
@@ -11,17 +11,33 @@ export class SQLiteAdapter implements DatabaseAdapter {
   }
 
   async init(): Promise<void> {
-    this.db.exec(`
-      CREATE TABLE IF NOT EXISTS contributions (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT NOT NULL,
-        filename TEXT NOT NULL,
-        line_number INTEGER NULL,
-        code TEXT NOT NULL,
-        status TEXT DEFAULT 'pending',
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
+    try {
+      this.db.exec(`
+        CREATE TABLE IF NOT EXISTS contributions (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          username TEXT NOT NULL,
+          filename TEXT NOT NULL,
+          line_number INTEGER,
+          code TEXT NOT NULL,
+          status TEXT DEFAULT 'pending',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+      
+      this.db.exec(`
+        CREATE TABLE IF NOT EXISTS users (
+          id TEXT PRIMARY KEY,
+          username TEXT UNIQUE NOT NULL,
+          is_channel_owner BOOLEAN DEFAULT 0,
+          access_token TEXT NOT NULL,
+          refresh_token TEXT NOT NULL,
+          token_expires_at INTEGER NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+    } catch (error) {
+      console.error('Failed to initialize SQLite tables:', error);
+    }
   }
 
   async getContributions(): Promise<Contribution[]> {
@@ -65,5 +81,37 @@ export class SQLiteAdapter implements DatabaseAdapter {
       console.error('SQLite query error:', error);
       throw error;
     }
+  }
+
+  async createOrUpdateUser(user: Omit<User, 'created_at'>): Promise<User> {
+    const stmt = this.db.prepare(`
+      INSERT INTO users (id, username, is_channel_owner, access_token, refresh_token, token_expires_at)
+      VALUES (?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        username = excluded.username,
+        is_channel_owner = excluded.is_channel_owner,
+        access_token = excluded.access_token,
+        refresh_token = excluded.refresh_token,
+        token_expires_at = excluded.token_expires_at
+    `);
+    
+    stmt.run(
+      user.id,
+      user.username,
+      user.is_channel_owner ? 1 : 0,
+      user.access_token,
+      user.refresh_token,
+      user.token_expires_at
+    );
+    
+    return this.getUserById(user.id) as Promise<User>;
+  }
+
+  async getUserByUsername(username: string): Promise<User | null> {
+    return this.db.prepare('SELECT * FROM users WHERE username = ?').get(username) as User | null;
+  }
+
+  async getUserById(id: string): Promise<User | null> {
+    return this.db.prepare('SELECT * FROM users WHERE id = ?').get(id) as User | null;
   }
 } 
