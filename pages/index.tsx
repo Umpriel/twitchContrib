@@ -33,6 +33,7 @@ export const getServerSideProps: GetServerSideProps = async () => {
 export default function Home({ initialContributions }: { initialContributions: Contribution[] }) {
   const [contributions, setContributions] = useState<Contribution[]>(initialContributions);
   const [copiedId, setCopiedId] = useState<number | null>(null);
+  const [isPollingEnabled, setIsPollingEnabled] = useState(true);
 
   useEffect(() => {
     // Check token validity
@@ -58,6 +59,17 @@ export default function Home({ initialContributions }: { initialContributions: C
     // Highlight all code blocks
     Prism.highlightAll();
   }, [contributions]);
+
+  useEffect(() => {
+    // Set up polling for new contributions
+    const pollInterval = setInterval(() => {
+      if (isPollingEnabled) {
+        refreshContributions();
+      }
+    }, 10000); // Poll every 10 seconds
+    
+    return () => clearInterval(pollInterval); // Clean up on unmount
+  }, [isPollingEnabled]); // Re-establish interval if polling state changes
 
   // Helper function to determine language from filename
   const getLanguage = (filename: string) => {
@@ -137,13 +149,28 @@ export default function Home({ initialContributions }: { initialContributions: C
           <div className="w-full">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-blue-400">Pending Contributions</h2>
-              <button 
-                onClick={refreshContributions}
-                className="flex items-center gap-2 px-3 py-2 bg-blue-500 hover:bg-blue-600 rounded-md transition-colors"
-              >
-                <ArrowPathIcon className="w-5 h-5" />
-                <span>Refresh</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={refreshContributions}
+                  className="flex items-center gap-2 px-3 py-2 bg-blue-500 hover:bg-blue-600 rounded-md transition-colors"
+                >
+                  <ArrowPathIcon className="w-5 h-5" />
+                  <span>Refresh</span>
+                </button>
+                <div className="flex items-center gap-2 ml-4">
+                  <span className="text-sm text-gray-400">Auto-refresh:</span>
+                  <button 
+                    onClick={() => setIsPollingEnabled(!isPollingEnabled)}
+                    className={`px-3 py-1 rounded-md transition-colors ${
+                      isPollingEnabled 
+                        ? 'bg-green-600 hover:bg-green-700' 
+                        : 'bg-gray-600 hover:bg-gray-700'
+                    }`}
+                  >
+                    {isPollingEnabled ? 'On' : 'Off'}
+                  </button>
+                </div>
+              </div>
             </div>
             <div className="space-y-6">
               {contributions.filter(c => c.status === 'pending').map(contribution => (
