@@ -5,4 +5,5 @@ node_modules
 vercel.json
 *.vsix
 *.db
+*Db.*
 contributions.db
