@@ -34,6 +34,8 @@ export default function Home({ initialContributions }: { initialContributions: C
   const [contributions, setContributions] = useState<Contribution[]>(initialContributions);
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const [isPollingEnabled, setIsPollingEnabled] = useState(true);
+  const [dataUpdated, setDataUpdated] = useState(false);
+  const [isPolling, setIsPolling] = useState(false);
 
   useEffect(() => {
     // Check token validity
@@ -56,8 +58,12 @@ export default function Home({ initialContributions }: { initialContributions: C
     
     checkToken();
     
-    // Highlight all code blocks
-    Prism.highlightAll();
+    // Highlight all code blocks after a slight delay to ensure DOM is updated
+    const highlightTimer = setTimeout(() => {
+      Prism.highlightAll();
+    }, 100);
+    
+    return () => clearTimeout(highlightTimer);
   }, [contributions]);
 
   useEffect(() => {
@@ -98,12 +104,37 @@ export default function Home({ initialContributions }: { initialContributions: C
   };
 
   const refreshContributions = async () => {
+    setIsPolling(true);
     try {
       const response = await fetch('/api/contributions');
       const data = await response.json();
-      setContributions(data);
+      
+      // Compare new data with current state to detect changes
+      const hasNewItems = data.some((newItem: Contribution) => 
+        !contributions.some(existingItem => existingItem.id === newItem.id)
+      );
+      
+      // Or check if any status has changed
+      const hasStatusChanges = data.some((newItem: Contribution) => {
+        const existingItem = contributions.find(item => item.id === newItem.id);
+        return existingItem && existingItem.status !== newItem.status;
+      });
+      
+      // Update state and set the dataUpdated flag if there are changes
+      if (hasNewItems || hasStatusChanges) {
+        setContributions(data);
+        setDataUpdated(true);
+        
+        // Clear the flag after a moment to allow animation to reset
+        setTimeout(() => setDataUpdated(false), 2000);
+      } else {
+        // Still update the data even if no visible changes
+        setContributions(data);
+      }
     } catch (error) {
       console.error('Failed to refresh contributions:', error);
+    } finally {
+      setIsPolling(false);
     }
   };
 
@@ -148,14 +179,22 @@ export default function Home({ initialContributions }: { initialContributions: C
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <div className="w-full">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-blue-400">Pending Contributions</h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-2xl font-bold text-blue-400">Pending Contributions</h2>
+                {dataUpdated && (
+                  <span className="animate-pulse px-2 py-1 bg-green-500 text-white text-xs rounded-md">
+                    New updates!
+                  </span>
+                )}
+              </div>
               <div className="flex items-center gap-2">
                 <button 
                   onClick={refreshContributions}
                   className="flex items-center gap-2 px-3 py-2 bg-blue-500 hover:bg-blue-600 rounded-md transition-colors"
+                  disabled={isPolling}
                 >
-                  <ArrowPathIcon className="w-5 h-5" />
-                  <span>Refresh</span>
+                  <ArrowPathIcon className={`w-5 h-5 ${isPolling ? 'animate-spin' : ''}`} />
+                  <span>{isPolling ? 'Refreshing...' : 'Refresh'}</span>
                 </button>
                 <div className="flex items-center gap-2 ml-4">
                   <span className="text-sm text-gray-400">Auto-refresh:</span>
