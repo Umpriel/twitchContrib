@@ -19,5 +19,7 @@
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx"],
+  //"lib/twitchOAuth.ts.bak"
+  //"lib/tokenStorage.ts.bak"
   "exclude": ["node_modules"]
 } 

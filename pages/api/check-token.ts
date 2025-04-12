@@ -1,11 +1,14 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { loadToken } from '../../lib/tokenStorage';
+import { parse } from 'cookie';
+import db from '../../lib/db';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const tokenData = await loadToken();
+    // Parse cookies to get user ID
+    const cookies = parse(req.headers.cookie || '');
+    const userId = cookies.twitch_user_id;
     
-    if (!tokenData) {
+    if (!userId) {
       return res.status(401).json({ 
         valid: false, 
         needsAuth: true,
@@ -13,9 +16,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
     
-    const expiryTime = tokenData.obtainmentTimestamp + (tokenData.expiresIn * 1000);
+    // Get user from database
+    const user = await db.getUserById(userId);
+    
+    if (!user) {
+      return res.status(401).json({ 
+        valid: false, 
+        needsAuth: true,
+        message: 'User not found, authorization required' 
+      });
+    }
+    
+    // Check if token is expired
     const now = Date.now();
-    const timeUntilExpiry = expiryTime - now;
+    const timeUntilExpiry = user.token_expires_at - now;
     
     // Token is valid if it has more than 1 hour until expiry
     const isValid = timeUntilExpiry > 3600000;
