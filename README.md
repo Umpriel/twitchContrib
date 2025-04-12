@@ -103,13 +103,16 @@ Access the web interface at `http://localhost:3005` to:
 <details>
 <summary><strong>Technologies</strong> (click to expand)</summary>
 
-- Next.js 13
-- TypeScript
-- TMI.js (Twitch chat integration)
-- SQLite3 with better-sqlite3
-- Tailwind CSS
-- Prism.js for syntax highlighting
-- Heroicons
+- Next.js 15.2.4
+- React 18.2.0
+- TypeScript 5.4.2
+- TMI.js 1.8.5
+- SQLite3 with better-sqlite3 11.9.1
+- Tailwind CSS 3.3.3
+- Prism.js 1.30.0
+- Heroicons 2.2.0
+- @twurple/api, @twurple/auth, @twurple/chat 7.2.1
+- @vercel/postgres 0.10.0
 </details>
 
 <details>
