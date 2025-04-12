@@ -1,7 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { exchangeCode } from '@twurple/auth';
-import fs from 'fs';
-import path from 'path';
+import { saveToken } from '../../../lib/tokenStorage';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { code } = req.query;
@@ -19,9 +18,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       process.env.NEXT_PUBLIC_TWITCH_REDIRECT_URI!
     );
     
-    // Save the token data
-    const tokenDataPath = path.join(process.cwd(), '.twitch-token.json');
-    fs.writeFileSync(tokenDataPath, JSON.stringify(tokenData, null, 4), 'utf8');
+    // Save the token data with fallback mechanism
+    await saveToken(tokenData);
     
     res.status(200).json({ success: true, message: 'Authorization successful!' });
   } catch (error) {

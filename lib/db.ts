@@ -1,4 +1,5 @@
 import { DatabaseAdapter, Contribution } from './db-interface';
+import { AccessToken } from '@twurple/auth';
 
 // Lazy-loaded adapter instance
 let adapter: DatabaseAdapter | null = null;
@@ -40,4 +41,62 @@ const db: DatabaseAdapter = new Proxy({} as DatabaseAdapter, {
   }
 });
 
-export default db; 
+export default db;
+
+// Get the Twitch token from the database
+export async function getTwitchToken() {
+  try {
+    const adapter = await getAdapter();
+    const result = await adapter.query(
+      'SELECT data FROM settings WHERE key = ?',
+      ['twitch_token']
+    );
+    
+    if (result && result.length > 0) {
+      return JSON.parse(result[0].data);
+    }
+    return undefined;
+  } catch (error) {
+    console.error('Error getting token from database:', error);
+    return undefined;
+  }
+}
+
+// Save the Twitch token to the database
+export async function saveTwitchToken(tokenData: AccessToken) {
+  try {
+    const adapter = await getAdapter();
+    
+    // Check if settings table exists, create it if not
+    await adapter.query(`
+      CREATE TABLE IF NOT EXISTS settings (
+        key TEXT PRIMARY KEY,
+        data TEXT
+      )
+    `);
+    
+    // Check if the token already exists
+    const exists = await adapter.query(
+      'SELECT 1 FROM settings WHERE key = ?', 
+      ['twitch_token']
+    );
+    
+    if (exists && exists.length > 0) {
+      // Update existing token
+      await adapter.query(
+        'UPDATE settings SET data = ? WHERE key = ?',
+        [JSON.stringify(tokenData), 'twitch_token']
+      );
+    } else {
+      // Insert new token
+      await adapter.query(
+        'INSERT INTO settings (key, data) VALUES (?, ?)',
+        ['twitch_token', JSON.stringify(tokenData)]
+      );
+    }
+    return true;
+  } catch (error) {
+    console.error('Error saving token to database:', error);
+    return false;
+  }
+} 

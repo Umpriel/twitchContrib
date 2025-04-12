@@ -77,4 +77,14 @@ export class PostgresAdapter implements DatabaseAdapter {
       return false;
     }
   }
+
+  async query(sqlStatement: string, params?: any[]): Promise<any[]> {
+    try {
+      const result = await sql.query(sqlStatement, params || []);
+      return result.rows;
+    } catch (error) {
+      console.error('PostgreSQL query error:', error);
+      throw error;
+    }
+  }
 } 

@@ -1,12 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import fs from 'fs';
-import path from 'path';
+import { loadToken } from '../../lib/tokenStorage';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const tokenPath = path.join(process.cwd(), '.twitch-token.json');
+    const tokenData = await loadToken();
     
-    if (!fs.existsSync(tokenPath)) {
+    if (!tokenData) {
       return res.status(401).json({ 
         valid: false, 
         needsAuth: true,
@@ -14,7 +13,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
     
-    const tokenData = JSON.parse(fs.readFileSync(tokenPath, 'utf8'));
     const expiryTime = tokenData.obtainmentTimestamp + (tokenData.expiresIn * 1000);
     const now = Date.now();
     const timeUntilExpiry = expiryTime - now;

@@ -15,4 +15,5 @@ export interface DatabaseAdapter {
   createContribution(username: string, filename: string, lineNumber: number | null, code: string): Promise<any>;
   checkSimilarContribution(username: string, filename: string, normalizedCode: string): Promise<boolean>;
   init(): Promise<void>;
+  query(sql: string, params?: any[]): Promise<any[]>;
 } 

@@ -56,4 +56,14 @@ export class SQLiteAdapter implements DatabaseAdapter {
     const existing = stmt.get(username, filename, normalizedCode);
     return !!existing;
   }
+
+  async query(sql: string, params?: any[]): Promise<any[]> {
+    try {
+      const stmt = this.db.prepare(sql);
+      return stmt.all(...(params || []));
+    } catch (error) {
+      console.error('SQLite query error:', error);
+      throw error;
+    }
+  }
 } 
