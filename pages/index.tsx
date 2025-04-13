@@ -108,6 +108,16 @@ export default function Home({ initialContributions }: { initialContributions: C
     return () => clearTimeout(highlightTimer);
   }, []);
 
+  // Memoize the hasNewItemsOrStatusChanges function
+  const hasNewItemsOrStatusChanges = useCallback((newData: Contribution[]) => {
+    return newData.some(newItem => 
+      !contributions.some(existingItem => existingItem.id === newItem.id)
+    ) || newData.some(newItem => {
+      const existingItem = contributions.find(item => item.id === newItem.id);
+      return existingItem && existingItem.status !== newItem.status;
+    });
+  }, [contributions]);
+
   useEffect(() => {
     // Variable polling rate based on activity
     let pollInterval = 5000; // Default to 5 seconds
@@ -164,17 +174,7 @@ export default function Home({ initialContributions }: { initialContributions: C
     
     // Cleanup
     return () => clearTimeout(pollingTimeoutId);
-  }, [isPollingEnabled]);
-
-  // Helper function to detect changes
-  const hasNewItemsOrStatusChanges = (newData: Contribution[]) => {
-    return newData.some(newItem => 
-      !contributions.some(existingItem => existingItem.id === newItem.id)
-    ) || newData.some(newItem => {
-      const existingItem = contributions.find(item => item.id === newItem.id);
-      return existingItem && existingItem.status !== newItem.status;
-    });
-  };
+  }, [isPollingEnabled, hasNewItemsOrStatusChanges]);
 
   useEffect(() => {
     const socket = io();

@@ -1,10 +1,6 @@
 import { useState, useEffect } from 'react';
 
 export default function DbMonitor() {
-  if (process.env.NEXT_PUBLIC_ENABLE_DB_MONITORING !== 'true') {
-    return null;
-  }
-
   const [metrics, setMetrics] = useState<{
     current: {healthy: boolean, latency: number},
     history: Array<{timestamp: number, latency: number, healthy: boolean}>,
@@ -13,7 +9,9 @@ export default function DbMonitor() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
-
+  
+  const monitoringEnabled = process.env.NEXT_PUBLIC_ENABLE_DB_MONITORING === 'true';
+  
   const fetchMetrics = async () => {
     try {
       setIsLoading(true);
@@ -37,6 +35,10 @@ export default function DbMonitor() {
       return () => clearInterval(interval);
     }
   }, [expanded]);
+
+  if (!monitoringEnabled) {
+    return null;
+  }
 
   if (!expanded) {
     return (

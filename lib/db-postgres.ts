@@ -31,13 +31,13 @@ async function withTransaction<T>(operation: () => Promise<T>): Promise<T> {
 }
 
 // Use transactions for critical operations
-async function updateMultipleStatuses(contributionIds: number[], status: string): Promise<void> {
+/*async function updateMultipleStatuses(contributionIds: number[], status: string): Promise<void> {
   return withTransaction(async () => {
     for (const id of contributionIds) {
       await sql`UPDATE contributions SET status = ${status} WHERE id = ${id}`;
     }
   });
-}
+}*/
 
 export class PostgresAdapter implements DatabaseAdapter {
   async init(): Promise<void> {
@@ -107,9 +107,23 @@ export class PostgresAdapter implements DatabaseAdapter {
 
   async updateStatus(id: number, status: string): Promise<void> {
     try {
-      await sql`UPDATE contributions SET status = ${status} WHERE id = ${id}`;
+      const startTime = Date.now();
+      
+      // Use transaction for data consistency
+      await withTransaction(async () => {
+        await sql`UPDATE contributions SET status = ${status} WHERE id = ${id}`;
+      });
+      
+      queryCount++;
+      const duration = Date.now() - startTime;
+      console.log(`[DB] Status updated for ID ${id} to "${status}" in ${duration}ms`);
+      
+      if (duration > 200) {
+        console.warn(`[DB] Slow query detected: updateStatus took ${duration}ms`);
+      }
     } catch (error) {
-      console.error('Error updating status:', error);
+      console.error('[DB] Error updating status:', error);
+      throw error;
     }
   }
 
