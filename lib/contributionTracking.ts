@@ -243,7 +243,11 @@ export async function processMessage(channel: string, tags: Record<string, unkno
     
     // Trigger a refresh for connected clients
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/refresh-trigger`, {
+      // For server-side fetch, we need absolute URLs
+      const redirectUri = process.env.NEXT_PUBLIC_TWITCH_REDIRECT_URI || '';
+      const baseUrl = redirectUri.replace('/api/auth/callback', '');
+      
+      await fetch(`${baseUrl}/api/refresh-trigger`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       });
