@@ -1,5 +1,6 @@
 import tmi from 'tmi.js';
 import { getUserByChannelOwner } from './db';
+import { User } from './db-interface';  // Make sure this import exists
 
 
 let chatClientPromise: Promise<tmi.Client> | null = null;
@@ -66,8 +67,8 @@ export const getChatClient = async () => {
     console.log('No existing chat client, initializing a new one');
 
     try {
-      const channelOwner = await getUserByChannelOwner();
-      if (channelOwner) {
+      const channelOwner = await getUserByChannelOwner() as User;
+      if (channelOwner && channelOwner.access_token) {
         console.log('Using channel owner token for chat');
         return initAndGetChatClient(channelOwner.access_token);
       } else {
