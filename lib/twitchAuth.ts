@@ -1,5 +1,5 @@
 import tmi from 'tmi.js';
-import db, { getUserByChannelOwner } from './db';
+import { getUserByChannelOwner } from './db';
 
 
 let chatClientPromise: Promise<tmi.Client> | null = null;

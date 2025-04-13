@@ -46,7 +46,7 @@ async function sendToVSCode(data: {
   lineNumber: number | null;
   filePath?: string | null;
 }) {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const postData = JSON.stringify(data);
     
     const options = {
@@ -84,7 +84,7 @@ async function sendToVSCode(data: {
             });
           }
         } catch (error) {
-
+          console.log('Error sending to VSCode:', error);
           resolve({ 
             success: true, 
             message: 'Request sent to VSCode. Check VSCode for details.'

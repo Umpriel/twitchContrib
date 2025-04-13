@@ -85,7 +85,7 @@ const parseContribution = (message: string) => {
 };
 
 // TODO: narrow down the unacceptable similarity threshold
-const hasSimilarContribution = async (username: string, filename: string, code: string) => {
+/*const hasSimilarContribution = async (username: string, filename: string, code: string) => {
   // Normalize the code more thoroughly
   const normalizedCode = code
     .replace(/\/\/.*$/gm, '')
@@ -101,6 +101,7 @@ const hasSimilarContribution = async (username: string, filename: string, code: 
     return false;
   }
 };
+*/
 
 
 setInterval(() => {
@@ -134,15 +135,15 @@ setInterval(() => {
 }, DUPLICATE_MESSAGE_WINDOW);
 
 
-export async function processMessage(channel: string, tags: any, message: string) {
+export async function processMessage(channel: string, tags: Record<string, unknown>, message: string) {
 
-  if (tags['id'] && processedMessageIds.has(tags['id'])) {
+  if (tags['id'] && processedMessageIds.has(String(tags['id']))) {
     return;
   }
   
 
   if (tags['id']) {
-    processedMessageIds.add(tags['id']);
+    processedMessageIds.add(String(tags['id']));
   }
   
 
@@ -150,7 +151,7 @@ export async function processMessage(channel: string, tags: any, message: string
     return;
   }
   
-  const username = tags['display-name'] || tags['username'];
+  const username = String(tags['display-name'] || tags['username']);
   
   console.log(`Processing contribution from ${username}: ${message}`);
   
@@ -240,7 +241,16 @@ export async function processMessage(channel: string, tags: any, message: string
       hash: codeHash
     };
     
-
+    // Trigger a refresh for connected clients
+    try {
+      await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/refresh-trigger`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+    } catch (refreshError) {
+      console.error('Failed to send refresh trigger:', refreshError);
+    }
+    
     console.log('Getting chat client to send notification');
     const client = await getChatClient();
     console.log('Chat client connected:', !!client);

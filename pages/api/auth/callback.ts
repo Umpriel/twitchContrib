@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { exchangeCode, refreshAuthToken } from '../../../lib/twitchAuth';
+import { exchangeCode } from '../../../lib/twitchAuth';
 import db from '../../../lib/db';
 import { serialize } from 'cookie';
 

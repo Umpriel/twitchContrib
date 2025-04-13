@@ -1,4 +1,4 @@
-import { DatabaseAdapter, Contribution } from './db-interface';
+import { DatabaseAdapter } from './db-interface';
 import { AccessToken } from '@twurple/auth';
 
 
@@ -30,11 +30,11 @@ const getAdapter = async (): Promise<DatabaseAdapter> => {
 
 const db: DatabaseAdapter = new Proxy({} as DatabaseAdapter, {
   get: (target, prop) => {
-    return async (...args: any[]) => {
+    return async (...args: unknown[]) => {
       const adapter = await getAdapter();
       const method = adapter[prop as keyof DatabaseAdapter];
       if (typeof method === 'function') {
-        return (method as Function).apply(adapter, args);
+        return (method as (...methodArgs: unknown[]) => unknown).apply(adapter, args);
       }
       return method;
     };
@@ -53,7 +53,8 @@ export async function getTwitchToken() {
     );
     
     if (result && result.length > 0) {
-      return JSON.parse(result[0].data);
+      const firstResult = result[0] as { data: string };
+      return JSON.parse(firstResult.data);
     }
     return undefined;
   } catch (error) {

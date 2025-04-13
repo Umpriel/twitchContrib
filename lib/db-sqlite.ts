@@ -53,12 +53,12 @@ export class SQLiteAdapter implements DatabaseAdapter {
     stmt.run(status, id);
   }
 
-  async createContribution(username: string, filename: string, lineNumber: number | null, code: string): Promise<any> {
+  async createContribution(username: string, filename: string, lineNumber: number | null, code: string, status: string = 'pending'): Promise<{ id: number | string }> {
     const stmt = this.db.prepare(
-      'INSERT INTO contributions (username, filename, line_number, code) VALUES (?, ?, ?, ?)'
+      'INSERT INTO contributions (username, filename, line_number, code, status) VALUES (?, ?, ?, ?, ?)'
     );
-    const result = stmt.run(username, filename, lineNumber, code);
-    return { id: result.lastInsertRowid };
+    const result = stmt.run(username, filename, lineNumber, code, status);
+    return { id: Number(result.lastInsertRowid) };
   }
 
   async checkSimilarContribution(username: string, filename: string, normalizedCode: string): Promise<boolean> {
@@ -90,7 +90,7 @@ export class SQLiteAdapter implements DatabaseAdapter {
     }
   }
 
-  async query(sql: string, params?: any[]): Promise<any[]> {
+  async query(sql: string, params?: unknown[]): Promise<unknown[]> {
     try {
       const stmt = this.db.prepare(sql);
       return stmt.all(...(params || []));

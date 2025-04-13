@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { GetServerSideProps } from 'next';
 import Prism from 'prismjs';
 import 'prismjs/themes/prism-tomorrow.css';  // Dark theme
@@ -11,6 +11,8 @@ import 'prismjs/components/prism-json';
 import { ArrowPathIcon, ClipboardIcon, ClipboardDocumentCheckIcon } from '@heroicons/react/24/outline';
 import db from '../lib/db';
 import UserProfile from '../components/UserProfile';
+import io from 'socket.io-client';
+import Link from 'next/link';
 
 interface Contribution {
   id: number;
@@ -41,9 +43,39 @@ export default function Home({ initialContributions }: { initialContributions: C
   const [isChannelOwner, setIsChannelOwner] = useState(false);
   const [authCheckComplete, setAuthCheckComplete] = useState(false);
   const [userInfo, setUserInfo] = useState<{username: string} | null>(null);
+  //const pollingIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  const refreshContributions = useCallback(async () => {
+    setIsPolling(true);
+    try {
+      const response = await fetch('/api/contributions');
+      const data = await response.json();
+      
+      const hasNewItems = data.some((newItem: Contribution) => 
+        !contributions.some(existingItem => existingItem.id === newItem.id)
+      );
+      
+      const hasStatusChanges = data.some((newItem: Contribution) => {
+        const existingItem = contributions.find(item => item.id === newItem.id);
+        return existingItem && existingItem.status !== newItem.status;
+      });
+      
+      if (hasNewItems || hasStatusChanges) {
+        setContributions(data);
+        setDataUpdated(true);
+        
+        setTimeout(() => setDataUpdated(false), 2000);
+      } else {
+        setContributions(data);
+      }
+    } catch (error) {
+      console.error('Failed to refresh contributions:', error);
+    } finally {
+      setIsPolling(false);
+    }
+  }, [contributions]);
 
   useEffect(() => {
-
     const checkAuth = async () => {
       try {
         const response = await fetch('/api/check-auth');
@@ -53,12 +85,10 @@ export default function Home({ initialContributions }: { initialContributions: C
         setIsChannelOwner(data.isChannelOwner);
         
         if (data.authenticated) {
-
           const userResponse = await fetch('/api/user');
           const userData = await userResponse.json();
           setUserInfo(userData);
           
-
           fetch('/api/init-twitch').catch(console.error);
         }
         
@@ -71,7 +101,6 @@ export default function Home({ initialContributions }: { initialContributions: C
     
     checkAuth();
     
-
     const highlightTimer = setTimeout(() => {
       Prism.highlightAll();
     }, 100);
@@ -80,16 +109,26 @@ export default function Home({ initialContributions }: { initialContributions: C
   }, []);
 
   useEffect(() => {
-
     const pollInterval = setInterval(() => {
       if (isPollingEnabled) {
         refreshContributions();
       }
-    }, 10000); // Poll every 10 seconds
+    }, 10000);
     
-    return () => clearInterval(pollInterval); // Clean up on unmount
-  }, [isPollingEnabled]); // Re-establish interval if polling state changes
+    return () => clearInterval(pollInterval);
+  }, [isPollingEnabled, refreshContributions]);
 
+  useEffect(() => {
+    const socket = io();
+    
+    socket.on('refreshContributions', () => {
+      refreshContributions();
+    });
+    
+    return () => {
+      socket.disconnect();
+    };
+  }, [refreshContributions]);
 
   const getLanguage = (filename: string) => {
     const ext = filename.split('.').pop()?.toLowerCase();
@@ -116,41 +155,6 @@ export default function Home({ initialContributions }: { initialContributions: C
     ));
   };
 
-  const refreshContributions = async () => {
-    setIsPolling(true);
-    try {
-      const response = await fetch('/api/contributions');
-      const data = await response.json();
-      
-
-      const hasNewItems = data.some((newItem: Contribution) => 
-        !contributions.some(existingItem => existingItem.id === newItem.id)
-      );
-      
-
-      const hasStatusChanges = data.some((newItem: Contribution) => {
-        const existingItem = contributions.find(item => item.id === newItem.id);
-        return existingItem && existingItem.status !== newItem.status;
-      });
-      
-
-      if (hasNewItems || hasStatusChanges) {
-        setContributions(data);
-        setDataUpdated(true);
-        
-
-        setTimeout(() => setDataUpdated(false), 2000);
-      } else {
-
-        setContributions(data);
-      }
-    } catch (error) {
-      console.error('Failed to refresh contributions:', error);
-    } finally {
-      setIsPolling(false);
-    }
-  };
-
   const copyToClipboard = async (id: number, code: string) => {
     try {
       await navigator.clipboard.writeText(code);
@@ -163,7 +167,6 @@ export default function Home({ initialContributions }: { initialContributions: C
 
   const sendToVSCodeWithPath = async (id: number) => {
     try {
-
       const filePath = prompt(
         "Enter path where file should be created (optional):\n" +
         "Leave blank to select in VSCode, or enter a path on your system.",
@@ -176,7 +179,6 @@ export default function Home({ initialContributions }: { initialContributions: C
         body: JSON.stringify({ id, filePath })
       });
       
-
       alert('Contribution sent to VSCode!');
     } catch (error) {
       console.error('Failed to send to VSCode:', error);
@@ -196,12 +198,12 @@ export default function Home({ initialContributions }: { initialContributions: C
           <p className="mb-8 text-lg text-center">
             Please log in with your Twitch account to access TwitchContrib.
           </p>
-          <a 
+          <Link 
             href="/auth-twitch"
             className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-md transition-colors text-lg"
           >
             Login with Twitch
-          </a>
+          </Link>
         </div>
       ) : (
         <div className="max-w-[90%] mx-auto p-6">

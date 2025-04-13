@@ -28,14 +28,14 @@ export interface DatabaseAdapter {
     lineNumber: number | null, 
     code: string, 
     status?: string
-  ): Promise<any>;
+  ): Promise<{ id: number | string }>;
   getSimilarContributions(
     username: string, 
     filename: string, 
     normalizedCode: string
   ): Promise<Contribution[]>;
   init(): Promise<void>;
-  query(sql: string, params?: any[]): Promise<any[]>;
+  query(sql: string, params?: unknown[]): Promise<unknown[]>;
   createOrUpdateUser(user: Omit<User, 'created_at'>): Promise<User>;
   getUserByUsername(username: string): Promise<User | null>;
   getUserById(id: string): Promise<User | null>;

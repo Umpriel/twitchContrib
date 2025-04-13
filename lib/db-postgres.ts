@@ -1,8 +1,8 @@
-import { sql, Pool } from '@vercel/postgres';
+import { sql } from '@vercel/postgres';
 import { DatabaseAdapter, Contribution, User } from './db-interface';
 
-// Create a connection pool to reuse connections
-let connectionPool: any = null;
+// Change let to const
+const connectionPool: unknown = null;
 
 export class PostgresAdapter implements DatabaseAdapter {
   async init(): Promise<void> {
@@ -75,7 +75,7 @@ export class PostgresAdapter implements DatabaseAdapter {
     lineNumber: number | null, 
     code: string,
     status: string = 'pending'
-  ): Promise<any> {
+  ): Promise<{ id: number }> {
     try {
       // Simplified logging
       console.log('Creating contribution in database...');
@@ -88,7 +88,7 @@ export class PostgresAdapter implements DatabaseAdapter {
       `;
       
       console.log('Contribution saved, ID:', rows[0]?.id);
-      return rows[0];
+      return { id: rows[0]?.id };
     } catch (error) {
       console.error('Database error:', error);
       throw error;
@@ -113,18 +113,18 @@ export class PostgresAdapter implements DatabaseAdapter {
     }
   }
 
-  async query(sqlStatement: string, params?: any[]): Promise<any[]> {
+  async query(sqlQuery: string, params?: unknown[]): Promise<unknown[]> {
     try {
-      let pgSql = sqlStatement;
+      let pgSql = sqlQuery;
       if (params && params.length > 0) {
         let paramIndex = 0;
-        pgSql = sqlStatement.replace(/\?/g, () => `$${++paramIndex}`);
+        pgSql = sqlQuery.replace(/\?/g, () => `$${++paramIndex}`);
       }
       
       const result = await sql.query(pgSql, params || []);
       return result.rows;
     } catch (error) {
-      console.error('PostgreSQL query error:', error, { sql: sqlStatement });
+      console.error('PostgreSQL query error:', error, { sql: sqlQuery });
       throw error;
     }
   }
