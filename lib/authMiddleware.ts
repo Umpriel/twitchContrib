@@ -9,7 +9,7 @@ export async function withAuth(
   res: NextApiResponse,
   handler: (req: NextApiRequest, res: NextApiResponse, userId: string) => Promise<void>
 ) {
-  // Parse cookies
+  
   const cookies = parse(req.headers.cookie || '');
   const userId = cookies.twitch_user_id;
   
@@ -17,20 +17,20 @@ export async function withAuth(
     return res.status(401).json({ error: 'Unauthorized' });
   }
   
-  // Get user from database
+
   const user = await db.getUserById(userId);
   
   if (!user) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
   
-  // Check if token is expired
+
   if (user.token_expires_at < Date.now()) {
     try {
-      // Try to refresh the token
+
       const newTokenData = await refreshAuthToken(user.refresh_token);
       
-      // Update user with new tokens
+
       await db.createOrUpdateUser({
         ...user,
         access_token: newTokenData.access_token,
@@ -38,7 +38,7 @@ export async function withAuth(
         token_expires_at: Date.now() + (newTokenData.expires_in * 1000)
       });
       
-      // Update the cookie with new expiration
+
       const cookie = serialize('twitch_user_id', userId, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
@@ -54,11 +54,11 @@ export async function withAuth(
     }
   }
   
-  // Check if user is channel owner
+
   if (!user.is_channel_owner) {
     return res.status(403).json({ error: 'Forbidden' });
   }
   
-  // Call the handler with the authenticated userId
+
   await handler(req, res, userId);
 } 

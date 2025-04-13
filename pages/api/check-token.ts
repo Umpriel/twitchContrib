@@ -4,7 +4,7 @@ import db from '../../lib/db';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    // Parse cookies to get user ID
+
     const cookies = parse(req.headers.cookie || '');
     const userId = cookies.twitch_user_id;
     
@@ -16,7 +16,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
     
-    // Get user from database
+
     const user = await db.getUserById(userId);
     
     if (!user) {
@@ -27,11 +27,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
     
-    // Check if token is expired
+
     const now = Date.now();
     const timeUntilExpiry = user.token_expires_at - now;
     
-    // Token is valid if it has more than 1 hour until expiry
+
     const isValid = timeUntilExpiry > 3600000;
     
     return res.status(200).json({

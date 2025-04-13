@@ -4,12 +4,12 @@ export default function AuthTwitch() {
   const [authUrl, setAuthUrl] = useState('');
   
   useEffect(() => {
-    // Create the auth URL directly without the deprecated class
+
     const scopes = (process.env.TWITCH_SCOPES || 'chat:read chat:edit').split(' ');
     const clientId = process.env.NEXT_PUBLIC_TWITCH_CLIENT_ID!;
     const redirectUri = process.env.NEXT_PUBLIC_TWITCH_REDIRECT_URI!;
     
-    // Build the Twitch OAuth URL manually
+
     const url = new URL('https://id.twitch.tv/oauth2/authorize');
     url.searchParams.append('client_id', clientId);
     url.searchParams.append('redirect_uri', redirectUri);

@@ -43,7 +43,7 @@ export default function Home({ initialContributions }: { initialContributions: C
   const [userInfo, setUserInfo] = useState<{username: string} | null>(null);
 
   useEffect(() => {
-    // Check auth status
+
     const checkAuth = async () => {
       try {
         const response = await fetch('/api/check-auth');
@@ -53,12 +53,12 @@ export default function Home({ initialContributions }: { initialContributions: C
         setIsChannelOwner(data.isChannelOwner);
         
         if (data.authenticated) {
-          // Get user info when authenticated
+
           const userResponse = await fetch('/api/user');
           const userData = await userResponse.json();
           setUserInfo(userData);
           
-          // Initialize Twitch
+
           fetch('/api/init-twitch').catch(console.error);
         }
         
@@ -71,7 +71,7 @@ export default function Home({ initialContributions }: { initialContributions: C
     
     checkAuth();
     
-    // Highlight all code blocks after a slight delay to ensure DOM is updated
+
     const highlightTimer = setTimeout(() => {
       Prism.highlightAll();
     }, 100);
@@ -80,7 +80,7 @@ export default function Home({ initialContributions }: { initialContributions: C
   }, []);
 
   useEffect(() => {
-    // Set up polling for new contributions
+
     const pollInterval = setInterval(() => {
       if (isPollingEnabled) {
         refreshContributions();
@@ -90,7 +90,7 @@ export default function Home({ initialContributions }: { initialContributions: C
     return () => clearInterval(pollInterval); // Clean up on unmount
   }, [isPollingEnabled]); // Re-establish interval if polling state changes
 
-  // Helper function to determine language from filename
+
   const getLanguage = (filename: string) => {
     const ext = filename.split('.').pop()?.toLowerCase();
     switch (ext) {
@@ -122,26 +122,26 @@ export default function Home({ initialContributions }: { initialContributions: C
       const response = await fetch('/api/contributions');
       const data = await response.json();
       
-      // Compare new data with current state to detect changes
+
       const hasNewItems = data.some((newItem: Contribution) => 
         !contributions.some(existingItem => existingItem.id === newItem.id)
       );
       
-      // Or check if any status has changed
+
       const hasStatusChanges = data.some((newItem: Contribution) => {
         const existingItem = contributions.find(item => item.id === newItem.id);
         return existingItem && existingItem.status !== newItem.status;
       });
       
-      // Update state and set the dataUpdated flag if there are changes
+
       if (hasNewItems || hasStatusChanges) {
         setContributions(data);
         setDataUpdated(true);
         
-        // Clear the flag after a moment to allow animation to reset
+
         setTimeout(() => setDataUpdated(false), 2000);
       } else {
-        // Still update the data even if no visible changes
+
         setContributions(data);
       }
     } catch (error) {
@@ -163,7 +163,7 @@ export default function Home({ initialContributions }: { initialContributions: C
 
   const sendToVSCodeWithPath = async (id: number) => {
     try {
-      // Ask for path (optional)
+
       const filePath = prompt(
         "Enter path where file should be created (optional):\n" +
         "Leave blank to select in VSCode, or enter a path on your system.",
@@ -176,7 +176,7 @@ export default function Home({ initialContributions }: { initialContributions: C
         body: JSON.stringify({ id, filePath })
       });
       
-      // Show success message
+
       alert('Contribution sent to VSCode!');
     } catch (error) {
       console.error('Failed to send to VSCode:', error);

@@ -60,11 +60,17 @@ export class PostgresAdapter implements DatabaseAdapter {
     }
   }
 
-  async createContribution(username: string, filename: string, lineNumber: number | null, code: string): Promise<any> {
+  async createContribution(
+    username: string, 
+    filename: string, 
+    lineNumber: number | null, 
+    code: string,
+    status: string = 'pending'
+  ): Promise<any> {
     try {
       const { rows } = await sql`
-        INSERT INTO contributions (username, filename, line_number, code)
-        VALUES (${username}, ${filename}, ${lineNumber}, ${code})
+        INSERT INTO contributions (username, filename, line_number, code, status)
+        VALUES (${username}, ${filename}, ${lineNumber}, ${code}, ${status})
         RETURNING id
       `;
       return rows[0];
@@ -74,19 +80,21 @@ export class PostgresAdapter implements DatabaseAdapter {
     }
   }
 
-  async checkSimilarContribution(username: string, filename: string, normalizedCode: string): Promise<boolean> {
+  async getSimilarContributions(username: string, filename: string, normalizedCode: string): Promise<Contribution[]> {
     try {
+      // Use a smarter comparison that ensures operators are preserved
       const { rows } = await sql`
         SELECT * FROM contributions 
         WHERE username = ${username}
         AND filename = ${filename}
-        AND REPLACE(REPLACE(code, E'\n', ' '), '  ', ' ') = ${normalizedCode}
+        AND REPLACE(REPLACE(REPLACE(code, E'\n', ' '), E'\r', ' '), '  ', ' ') ILIKE ${normalizedCode + '%'}
         AND created_at > NOW() - INTERVAL '1 hour'
+        LIMIT 5
       `;
-      return rows.length > 0;
+      return rows as Contribution[];
     } catch (error) {
       console.error('Error checking similar contributions:', error);
-      return false;
+      return [];
     }
   }
 

@@ -14,14 +14,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    // Get the contribution details
+
     const contribution = await db.getContribution(id);
     
     if (!contribution) {
       return res.status(404).json({ error: 'Contribution not found' });
     }
     
-    // Send to VSCode extension
+
     const vscodeResponse = await sendToVSCode({
       filename: contribution.filename,
       code: contribution.code,
@@ -32,7 +32,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(200).json(vscodeResponse);
   } catch (error) {
     console.error('Error sending to VSCode:', error);
-    // Return success even when errors occur
+
     return res.status(200).json({ 
       success: true, 
       message: 'Send to VSCode operation completed. Check VS Code for details.'
@@ -71,20 +71,20 @@ async function sendToVSCode(data: {
         try {
           const parsedData = JSON.parse(responseData);
           if (res.statusCode === 200) {
-            // Always resolve with success
+
             resolve({
               success: true,
               message: parsedData.message || 'Code sent to VSCode successfully'
             });
           } else {
-            // Even for non-200 responses, resolve with success
+
             resolve({ 
               success: true, 
               message: 'Request sent to VSCode. Check VSCode for details.'
             });
           }
         } catch (error) {
-          // Even parsing errors result in success
+
           resolve({ 
             success: true, 
             message: 'Request sent to VSCode. Check VSCode for details.'
@@ -94,7 +94,7 @@ async function sendToVSCode(data: {
     });
     
     req.on('error', (error) => {
-      // Don't reject! Instead, resolve with a helpful message
+
       console.error('Error connecting to VSCode extension:', error);
       resolve({ 
         success: true, 

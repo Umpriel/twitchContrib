@@ -1,15 +1,15 @@
 import { DatabaseAdapter, Contribution } from './db-interface';
 import { AccessToken } from '@twurple/auth';
 
-// Lazy-loaded adapter instance
+
 let adapter: DatabaseAdapter | null = null;
 
-// Get the appropriate adapter based on environment
+
 const getAdapter = async (): Promise<DatabaseAdapter> => {
   if (adapter) return adapter;
   
   try {
-    // Check if we're in Vercel environment
+
     if (process.env.VERCEL) {
       const { PostgresAdapter } = await import('./db-postgres');
       adapter = new PostgresAdapter();
@@ -18,7 +18,7 @@ const getAdapter = async (): Promise<DatabaseAdapter> => {
       adapter = new SQLiteAdapter();
     }
     
-    // Initialize the database
+
     await adapter.init();
     return adapter;
   } catch (error) {
@@ -27,7 +27,7 @@ const getAdapter = async (): Promise<DatabaseAdapter> => {
   }
 };
 
-// Create a proxy object that will lazily initialize the correct adapter
+
 const db: DatabaseAdapter = new Proxy({} as DatabaseAdapter, {
   get: (target, prop) => {
     return async (...args: any[]) => {
@@ -43,7 +43,7 @@ const db: DatabaseAdapter = new Proxy({} as DatabaseAdapter, {
 
 export default db;
 
-// Get the Twitch token from the database
+
 export async function getTwitchToken() {
   try {
     const adapter = await getAdapter();
@@ -62,12 +62,12 @@ export async function getTwitchToken() {
   }
 }
 
-// Save the Twitch token to the database
+
 export async function saveTwitchToken(tokenData: AccessToken) {
   try {
     const adapter = await getAdapter();
     
-    // Check if settings table exists, create it if not
+
     await adapter.query(`
       CREATE TABLE IF NOT EXISTS settings (
         key TEXT PRIMARY KEY,
@@ -75,20 +75,20 @@ export async function saveTwitchToken(tokenData: AccessToken) {
       )
     `);
     
-    // Check if the token already exists
+
     const exists = await adapter.query(
       'SELECT 1 FROM settings WHERE key = ?', 
       ['twitch_token']
     );
     
     if (exists && exists.length > 0) {
-      // Update existing token
+
       await adapter.query(
         'UPDATE settings SET data = ? WHERE key = ?',
         [JSON.stringify(tokenData), 'twitch_token']
       );
     } else {
-      // Insert new token
+
       await adapter.query(
         'INSERT INTO settings (key, data) VALUES (?, ?)',
         ['twitch_token', JSON.stringify(tokenData)]
@@ -99,4 +99,11 @@ export async function saveTwitchToken(tokenData: AccessToken) {
     console.error('Error saving token to database:', error);
     return false;
   }
+}
+
+
+export async function getUserByChannelOwner() {
+
+  const [user] = await db.query('SELECT * FROM users WHERE is_channel_owner = true LIMIT 1');
+  return user;
 } 

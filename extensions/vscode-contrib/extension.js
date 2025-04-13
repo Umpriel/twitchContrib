@@ -3,21 +3,18 @@ const http = require('http');
 const path = require('path');
 const fs = require('fs');
 
-// Store the selected repository root path
 let repositoryRootPath = null;
 
-// Manual override path that takes precedence if set
 let manualPathOverride = null;
 
 function activate(context) {
   console.log("TRACE: Extension activating");
-  // Load previously saved repository root path
   const savedRootPath = context.globalState.get('repositoryRootPath');
   if (savedRootPath) {
     repositoryRootPath = vscode.Uri.file(savedRootPath);
     console.log(`TRACE: Loaded saved repository root: ${repositoryRootPath.fsPath}`);
   } else {
-    // Auto-detect workspace folder as repository root when extension activates
+    // Auto-detect  folder as repository root when extension activates
     autoSetRepositoryRoot(context);
   }
   

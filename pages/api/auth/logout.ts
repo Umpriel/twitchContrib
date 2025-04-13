@@ -1,12 +1,20 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { serialize } from 'cookie';
+import { resetChatClient } from '../../../lib/twitchAuth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
   
-  // Clear the auth cookie by setting it to expire in the past
+  // Reset the chat client before logging out
+  try {
+    await resetChatClient();
+    console.log('Chat client reset during logout');
+  } catch (error) {
+    console.error('Error resetting chat client during logout:', error);
+  }
+
   const cookie = serialize('twitch_user_id', '', {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',

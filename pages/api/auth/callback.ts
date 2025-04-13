@@ -11,17 +11,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
   
   try {
-    // Exchange the code for tokens
+
     const tokenData = await exchangeCode(code);
     
-    // Get user info from Twitch
+
     const userInfo = await getUserInfo(tokenData.access_token);
     
-    // Check if this user is the channel owner
+
     const isChannelOwner = userInfo.login.toLowerCase() === 
       process.env.TWITCH_CHANNEL?.toLowerCase();
     
-    // Save user to database
+
     await db.createOrUpdateUser({
       id: userInfo.id,
       username: userInfo.login,
@@ -31,7 +31,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       token_expires_at: Date.now() + (tokenData.expires_in * 1000)
     });
     
-    // Set a secure cookie with the user's ID
+
     const cookie = serialize('twitch_user_id', userInfo.id, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -42,7 +42,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     
     res.setHeader('Set-Cookie', cookie);
     
-    // Redirect to home page
+
     res.redirect('/');
   } catch (error) {
     console.error('Auth callback error:', error);

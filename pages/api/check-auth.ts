@@ -4,7 +4,7 @@ import db from '../../lib/db';
 import { refreshAuthToken } from '../../lib/twitchAuth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  // Parse cookies
+
   const cookies = parse(req.headers.cookie || '');
   const userId = cookies.twitch_user_id;
   
@@ -13,20 +13,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
   
   try {
-    // Get user from database
+
     const user = await db.getUserById(userId);
     
     if (!user) {
       return res.status(200).json({ authenticated: false, isChannelOwner: false });
     }
     
-    // Check token expiry
+
     if (user.token_expires_at < Date.now()) {
-      // Token is expired, refresh it
+
       try {
         const newTokenData = await refreshAuthToken(user.refresh_token);
         
-        // Update user with new tokens
+
         await db.createOrUpdateUser({
           ...user,
           access_token: newTokenData.access_token,
