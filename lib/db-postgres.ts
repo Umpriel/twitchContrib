@@ -68,15 +68,20 @@ export class PostgresAdapter implements DatabaseAdapter {
     status: string = 'pending'
   ): Promise<any> {
     try {
+      console.log('PostgreSQL: Creating contribution with:', { username, filename, lineNumber });
       const { rows } = await sql`
         INSERT INTO contributions (username, filename, line_number, code, status)
         VALUES (${username}, ${filename}, ${lineNumber}, ${code}, ${status})
         RETURNING id
       `;
+      console.log('PostgreSQL: Insert success, returned rows:', rows);
       return rows[0];
     } catch (error) {
-      console.error('Error creating contribution:', error);
-      return null;
+      console.error('PostgreSQL error creating contribution:', error);
+      if (error instanceof Error) {
+        console.error('Stack trace:', error.stack);
+      }
+      throw error; // Re-throw so the calling function can handle it
     }
   }
 

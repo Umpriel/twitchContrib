@@ -226,14 +226,15 @@ export async function processMessage(channel: string, tags: any, message: string
   
 
   try {
-    await db.createContribution(
+    console.log('Attempting to save contribution to database...');
+    const result = await db.createContribution(
       username,
       filename,
       lineNumber,
       code
     );
+    console.log('Database save result:', result);
     
-
     userSubmissions[username] = {
       time: now,
       hash: codeHash
@@ -266,10 +267,15 @@ export async function processMessage(channel: string, tags: any, message: string
     console.log(`Contribution from ${username} saved successfully`);
   } catch (error) {
     console.error('Error saving contribution:', error);
+    console.error('Error details:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
     
-
-    const client = await getChatClient();
-    client.say(channel, `@${username} Failed to save contribution. Please try again later.`);
+    try {
+      const client = await getChatClient();
+      const formattedChannel = channel.startsWith('#') ? channel : `#${channel}`;
+      await client.say(formattedChannel, `@${username} Failed to save contribution. Please try again later.`);
+    } catch (chatError) {
+      console.error('Additionally failed to send error notification:', chatError);
+    }
   }
 }
 
