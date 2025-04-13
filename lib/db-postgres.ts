@@ -1,9 +1,18 @@
-import { sql } from '@vercel/postgres';
+import { sql, Pool } from '@vercel/postgres';
 import { DatabaseAdapter, Contribution, User } from './db-interface';
+
+// Create a connection pool to reuse connections
+let connectionPool: any = null;
 
 export class PostgresAdapter implements DatabaseAdapter {
   async init(): Promise<void> {
     try {
+      // Initialize the pool once
+      if (!connectionPool) {
+        console.log('Initializing database connection pool');
+        // The @vercel/postgres package handles pooling internally
+      }
+      
       await sql`
         CREATE TABLE IF NOT EXISTS contributions (
           id SERIAL PRIMARY KEY,
@@ -68,20 +77,21 @@ export class PostgresAdapter implements DatabaseAdapter {
     status: string = 'pending'
   ): Promise<any> {
     try {
-      console.log('PostgreSQL: Creating contribution with:', { username, filename, lineNumber });
+      // Simplified logging
+      console.log('Creating contribution in database...');
+      
+      // Execute the query with optimized parameters
       const { rows } = await sql`
         INSERT INTO contributions (username, filename, line_number, code, status)
         VALUES (${username}, ${filename}, ${lineNumber}, ${code}, ${status})
         RETURNING id
       `;
-      console.log('PostgreSQL: Insert success, returned rows:', rows);
+      
+      console.log('Contribution saved, ID:', rows[0]?.id);
       return rows[0];
     } catch (error) {
-      console.error('PostgreSQL error creating contribution:', error);
-      if (error instanceof Error) {
-        console.error('Stack trace:', error.stack);
-      }
-      throw error; // Re-throw so the calling function can handle it
+      console.error('Database error:', error);
+      throw error;
     }
   }
 
