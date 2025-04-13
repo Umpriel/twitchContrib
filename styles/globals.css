@@ -53,4 +53,29 @@ code[class*="language-"] {
 
 .token.parameter {
   color: #9cdcfe !important;
+}
+
+/* IDE-like code styling with whitespace preservation */
+.code-block {
+  background: #1e1e1e;
+  border-radius: 6px;
+  margin: 0;
+  padding: 1rem;
+  overflow: auto;
+  max-height: 400px;
+  tab-size: 2;
+  -moz-tab-size: 2;
+}
+
+.code-block code {
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre !important;
+  tab-size: 2;
+  -moz-tab-size: 2;
+}
+
+pre, code {
+  white-space: pre !important;
 } 
