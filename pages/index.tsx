@@ -109,14 +109,72 @@ export default function Home({ initialContributions }: { initialContributions: C
   }, []);
 
   useEffect(() => {
-    const pollInterval = setInterval(() => {
-      if (isPollingEnabled) {
-        refreshContributions();
-      }
-    }, 10000);
+    // Variable polling rate based on activity
+    let pollInterval = 5000; // Default to 5 seconds
+    const minPollInterval = 2000; // Never poll faster than 2 seconds
+    const maxPollInterval = 10000; // Never wait longer than 10 seconds
+    const inactivityFactor = 1.5; // Increase polling interval by this factor during inactivity
     
-    return () => clearInterval(pollInterval);
-  }, [isPollingEnabled, refreshContributions]);
+    let consecutiveEmptyPolls = 0;
+    let pollingTimeoutId: NodeJS.Timeout;
+    
+    const adaptivePolling = async () => {
+      if (!isPollingEnabled) {
+        pollingTimeoutId = setTimeout(adaptivePolling, maxPollInterval);
+        return;
+      }
+      
+      try {
+        const startTime = Date.now();
+        const response = await fetch('/api/contributions');
+        const data = await response.json();
+        
+        // Detect if there were any changes
+        const hasChanges = hasNewItemsOrStatusChanges(data);
+        
+        if (hasChanges) {
+          // Activity detected - poll more frequently
+          consecutiveEmptyPolls = 0;
+          pollInterval = minPollInterval;
+          setContributions(data);
+          setDataUpdated(true);
+          setTimeout(() => setDataUpdated(false), 2000);
+        } else {
+          // No changes - gradually slow down polling
+          consecutiveEmptyPolls++;
+          if (consecutiveEmptyPolls > 3) {
+            pollInterval = Math.min(pollInterval * inactivityFactor, maxPollInterval);
+          }
+          setContributions(data);
+        }
+        
+        console.log(`Polling completed in ${Date.now() - startTime}ms, next poll in ${pollInterval}ms`);
+      } catch (error) {
+        console.error('Polling error:', error);
+        // Back off on errors
+        pollInterval = maxPollInterval;
+      } finally {
+        setIsPolling(false);
+        pollingTimeoutId = setTimeout(adaptivePolling, pollInterval);
+      }
+    };
+    
+    // Start polling immediately
+    adaptivePolling();
+    
+    // Cleanup
+    return () => clearTimeout(pollingTimeoutId);
+  }, [isPollingEnabled]);
+
+  // Helper function to detect changes
+  const hasNewItemsOrStatusChanges = (newData: Contribution[]) => {
+    return newData.some(newItem => 
+      !contributions.some(existingItem => existingItem.id === newItem.id)
+    ) || newData.some(newItem => {
+      const existingItem = contributions.find(item => item.id === newItem.id);
+      return existingItem && existingItem.status !== newItem.status;
+    });
+  };
 
   useEffect(() => {
     const socket = io();

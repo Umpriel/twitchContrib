@@ -5,11 +5,13 @@ import db from './db';
 
 
 const userSubmissions: { [key: string]: { time: number; hash: string } } = {};
-const SUBMISSION_COOLDOWN = 2000; // 2 seconds cooldown
+const SUBMISSION_COOLDOWN = 800; // Reduced from 2000ms to 800ms
 const processedMessageIds = new Set<string>();
 const MESSAGE_ID_CLEANUP_INTERVAL = 300000; // Clean up every 5 minutes
-const DUPLICATE_MESSAGE_WINDOW = 5000; // 5 seconds window to detect duplicates
+const DUPLICATE_MESSAGE_WINDOW = 3000; // Reduced from 5000ms to 3000ms
 const recentMessages = new Map<string, number>();
+const REFRESH_RETRY_INTERVAL = 100; // ms to retry refresh if needed
+const MAX_REFRESH_RETRIES = 3;
 
 
 let listenersInitialized = false;
@@ -247,10 +249,28 @@ export async function processMessage(channel: string, tags: Record<string, unkno
       const redirectUri = process.env.NEXT_PUBLIC_TWITCH_REDIRECT_URI || '';
       const baseUrl = redirectUri.replace('/api/auth/callback', '');
       
-      await fetch(`${baseUrl}/api/refresh-trigger`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      });
+      let retries = 0;
+      
+      while (retries < MAX_REFRESH_RETRIES) {
+        try {
+          const response = await fetch(`${baseUrl}/api/refresh-trigger`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+          });
+          
+          if (response.ok) {
+            console.log('Refresh trigger sent successfully');
+            break;
+          }
+        } catch (error) {
+          console.error(`Refresh attempt ${retries + 1} failed:`, error);
+        }
+        
+        retries++;
+        if (retries < MAX_REFRESH_RETRIES) {
+          await new Promise(resolve => setTimeout(resolve, REFRESH_RETRY_INTERVAL));
+        }
+      }
     } catch (refreshError) {
       console.error('Failed to send refresh trigger:', refreshError);
     }
@@ -263,14 +283,11 @@ export async function processMessage(channel: string, tags: Record<string, unkno
     console.log('Sending to channel:', channel);
     
     try {
-
       const message = `@${username} Contribution saved! Thank you for your code snippet.`;
       console.log(`Attempting to send: "${message}" to ${channel}`);
       
-
       const formattedChannel = channel.startsWith('#') ? channel : `#${channel}`;
       
-
       await client.say(formattedChannel, message);
       
       console.log('Chat message sent successfully');

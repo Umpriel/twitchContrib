@@ -11,15 +11,23 @@ export default async function handler(
 
   try {
     // Get the socket.io server instance
-    const io = res.socket.server.io;
+    const io = res.socket?.server?.io;
     
     if (!io) {
-      console.log('Socket.io server not initialized yet');
-      return res.status(200).json({ message: 'Notification queued' });
+      console.log('Socket.io server not initialized yet, retrying...');
+      
+      // Try initializing socket here as a fallback
+      try {
+        await fetch(`${req.headers.host}/api/socket`);
+      } catch (initError) {
+        console.error('Failed to initialize socket:', initError);
+      }
+      
+      // Continue - response will still indicate success even if socket failed
+    } else {
+      console.log('Emitting refreshContributions event');
+      io.emit('refreshContributions');
     }
-
-    // Emit the refresh event to all connected clients
-    io.emit('refreshContributions');
     
     return res.status(200).json({ success: true });
   } catch (error) {

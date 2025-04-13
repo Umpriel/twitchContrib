@@ -1,5 +1,6 @@
 import { DatabaseAdapter } from './db-interface';
 import { AccessToken } from '@twurple/auth';
+import { sql } from '@vercel/postgres';
 
 
 let adapter: DatabaseAdapter | null = null;
@@ -107,4 +108,38 @@ export async function getUserByChannelOwner() {
 
   const [user] = await db.query('SELECT * FROM users WHERE is_channel_owner = true LIMIT 1');
   return user;
-} 
+}
+
+// Add Neon DB specific optimizations
+
+// Add health check function
+export async function checkDatabaseHealth() {
+  try {
+    const startTime = Date.now();
+    const { rows } = await sql`SELECT 1 as health_check`;
+    const duration = Date.now() - startTime;
+    
+    console.log(`[DB Health] Connection test completed in ${duration}ms`);
+    return {
+      healthy: rows.length > 0 && rows[0].health_check === 1,
+      latency: duration
+    };
+  } catch (error) {
+    console.error('[DB Health] Connection test failed:', error);
+    return {
+      healthy: false,
+      latency: -1,
+      error: (error as Error).message
+    };
+  }
+}
+
+// Call this periodically
+setInterval(async () => {
+  const health = await checkDatabaseHealth();
+  if (!health.healthy) {
+    console.error('[DB Alert] Database connection issues detected');
+  } else if (health.latency > 500) {
+    console.warn(`[DB Alert] High database latency: ${health.latency}ms`);
+  }
+}, 60000); // Check every minute 

@@ -1,8 +1,43 @@
 import { sql } from '@vercel/postgres';
 import { DatabaseAdapter, Contribution, User } from './db-interface';
 
+// Add connection monitoring
+let queryCount = 0;
+let lastResetTime = Date.now();
+const METRICS_INTERVAL = 60000; // Log metrics every minute
+
+// Reset metrics periodically
+setInterval(() => {
+  console.log(`DB Performance: ${queryCount} queries in the last ${(Date.now() - lastResetTime)/1000}s`);
+  queryCount = 0;
+  lastResetTime = Date.now();
+}, METRICS_INTERVAL);
+
 // Change let to const
 const connectionPool: unknown = null;
+
+// Add transaction support to prevent race conditions
+async function withTransaction<T>(operation: () => Promise<T>): Promise<T> {
+  try {
+    await sql`BEGIN`;
+    const result = await operation();
+    await sql`COMMIT`;
+    return result;
+  } catch (error) {
+    await sql`ROLLBACK`;
+    console.error('Transaction failed:', error);
+    throw error;
+  }
+}
+
+// Use transactions for critical operations
+async function updateMultipleStatuses(contributionIds: number[], status: string): Promise<void> {
+  return withTransaction(async () => {
+    for (const id of contributionIds) {
+      await sql`UPDATE contributions SET status = ${status} WHERE id = ${id}`;
+    }
+  });
+}
 
 export class PostgresAdapter implements DatabaseAdapter {
   async init(): Promise<void> {
@@ -42,11 +77,20 @@ export class PostgresAdapter implements DatabaseAdapter {
   }
 
   async getContributions(): Promise<Contribution[]> {
+    const startTime = Date.now();
     try {
-      const { rows } = await sql`SELECT * FROM contributions ORDER BY created_at DESC`;
+      // Add limit and optimize query
+      const { rows } = await sql`
+        SELECT * FROM contributions 
+        ORDER BY created_at DESC 
+        LIMIT 100
+      `;
+      
+      queryCount++;
+      console.log(`[DB] Fetched ${rows.length} contributions in ${Date.now() - startTime}ms`);
       return rows as Contribution[];
     } catch (error) {
-      console.error('Error fetching contributions:', error);
+      console.error('[DB] Error fetching contributions:', error);
       return [];
     }
   }
@@ -77,8 +121,8 @@ export class PostgresAdapter implements DatabaseAdapter {
     status: string = 'pending'
   ): Promise<{ id: number }> {
     try {
-      // Simplified logging
-      console.log('Creating contribution in database...');
+      const startTime = Date.now();
+      console.log(`[DB] Starting contribution creation for ${username}`);
       
       // Execute the query with optimized parameters
       const { rows } = await sql`
@@ -87,10 +131,18 @@ export class PostgresAdapter implements DatabaseAdapter {
         RETURNING id
       `;
       
-      console.log('Contribution saved, ID:', rows[0]?.id);
+      queryCount++;
+      const duration = Date.now() - startTime;
+      console.log(`[DB] Contribution saved, ID: ${rows[0]?.id}, took ${duration}ms`);
+      
+      // Add warning for slow queries
+      if (duration > 500) {
+        console.warn(`[DB] Slow query detected: createContribution by ${username} took ${duration}ms`);
+      }
+      
       return { id: rows[0]?.id };
     } catch (error) {
-      console.error('Database error:', error);
+      console.error('[DB] Error creating contribution:', error);
       throw error;
     }
   }
