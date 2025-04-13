@@ -73,6 +73,23 @@ export class SQLiteAdapter implements DatabaseAdapter {
     return !!existing;
   }
 
+  async getSimilarContributions(username: string, filename: string, normalizedCode: string): Promise<Contribution[]> {
+    try {
+      const stmt = this.db.prepare(`
+        SELECT * FROM contributions 
+        WHERE username = ? 
+        AND filename = ? 
+        AND REPLACE(REPLACE(code, '\n', ' '), '  ', ' ') LIKE ?
+        AND datetime(created_at) > datetime('now', '-1 hour')
+        LIMIT 5
+      `);
+      return stmt.all(username, filename, normalizedCode + '%') as Contribution[];
+    } catch (error) {
+      console.error('Error checking similar contributions:', error);
+      return [];
+    }
+  }
+
   async query(sql: string, params?: any[]): Promise<any[]> {
     try {
       const stmt = this.db.prepare(sql);
