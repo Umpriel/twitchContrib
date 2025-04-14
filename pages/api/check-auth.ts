@@ -13,7 +13,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
   
   try {
-
     const user = await db.getUserById(userId);
     
     if (!user) {

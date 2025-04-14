@@ -27,10 +27,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
     
 
-    await initAndGetChatClient(user.access_token);
+    const client = await initAndGetChatClient(user.access_token);
     
 
-    await initContributionTracking();
+    await initContributionTracking(client);
     
     res.status(200).json({ success: true });
   } catch (error) {

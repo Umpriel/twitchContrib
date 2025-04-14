@@ -1,4 +1,4 @@
-import tmi from 'tmi.js';
+import tmi, { Client } from 'tmi.js';
 import { getUserByChannelOwner } from './db';
 import { User } from './db-interface';  // Make sure this import exists
 
@@ -47,8 +47,6 @@ export const initAndGetChatClient = async (accessToken?: string) => {
         await client.join(process.env.TWITCH_CHANNEL);
       }
       
-
-      console.log('Client connected to channels:', client.getChannels());
       
       chatClientPromise = Promise.resolve(client);
       return client;
@@ -128,9 +126,8 @@ export async function refreshAuthToken(refreshToken: string) {
 }
 
 
-export const verifyChatClient = async () => {
+export const verifyChatClient = async (client: Client) => {
   try {
-    const client = await getChatClient();
     console.log('Chat client details:');
     console.log('- Connected:', client.readyState() === 'OPEN');
     console.log('- Channels:', client.getChannels());

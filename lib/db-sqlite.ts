@@ -48,6 +48,10 @@ export class SQLiteAdapter implements DatabaseAdapter {
     return this.db.prepare('SELECT * FROM contributions WHERE id = ?').get(id) as Contribution | null;
   }
 
+  async getContributionsByFilename(filename: string): Promise<Contribution[]> {
+    return this.db.prepare('SELECT * FROM contributions WHERE filename = ?').all(filename) as Contribution[];
+  }
+
   async updateStatus(id: number, status: string): Promise<void> {
     const stmt = this.db.prepare('UPDATE contributions SET status = ? WHERE id = ?');
     stmt.run(status, id);
@@ -130,5 +134,55 @@ export class SQLiteAdapter implements DatabaseAdapter {
 
   async getUserById(id: string): Promise<User | null> {
     return this.db.prepare('SELECT * FROM users WHERE id = ?').get(id) as User | null;
+  }
+
+  async checkContributionConflicts(
+    filename: string,
+    lineNumber: number | null,
+    codeHash: string,
+    username: string
+  ): Promise<{ personalDuplicate: boolean; acceptedDuplicate: boolean; lineConflict: boolean }> {
+    try {
+      // Personal duplicate check
+      const personalDupeStmt = this.db.prepare(`
+        SELECT COUNT(*) as count
+        FROM contributions
+        WHERE filename = ? 
+        AND REPLACE(REPLACE(REPLACE(LOWER(code), '\n', ''), ' ', ''), '\r', '') || filename = ?
+        AND username = ?
+      `);
+      const personalResult = personalDupeStmt.get(filename, codeHash, username) as { count: number };
+      
+      // Accepted duplicate check
+      const acceptedDupeStmt = this.db.prepare(`
+        SELECT COUNT(*) as count
+        FROM contributions
+        WHERE filename = ? 
+        AND REPLACE(REPLACE(REPLACE(LOWER(code), '\n', ''), ' ', ''), '\r', '') || filename = ?
+        AND status = 'accepted'
+      `);
+      const acceptedResult = acceptedDupeStmt.get(filename, codeHash) as { count: number };
+      
+      // Line conflict check
+      const lineConflictStmt = this.db.prepare(`
+        SELECT COUNT(*) as count
+        FROM contributions
+        WHERE filename = ? 
+        AND line_number = ? 
+        AND ? IS NOT NULL
+        AND username != ?
+        AND status = 'pending'
+      `);
+      const lineResult = lineConflictStmt.get(filename, lineNumber, lineNumber, username) as { count: number };
+      
+      return {
+        personalDuplicate: personalResult.count > 0,
+        acceptedDuplicate: acceptedResult.count > 0,
+        lineConflict: lineResult.count > 0
+      };
+    } catch (error) {
+      console.error('Error checking contribution conflicts:', error);
+      return { personalDuplicate: false, acceptedDuplicate: false, lineConflict: false };
+    }
   }
 } 

@@ -8,7 +8,7 @@ export class PostgresAdapter implements DatabaseAdapter {
   async init(): Promise<void> {
     try {
       // Initialize the pool once
-      if (!connectionPool) {
+      if (!connectionPool && process.env.NEXT_PUBLIC_ENABLE_DB_MONITORING === 'true') {
         console.log('Initializing database connection pool');
         // The @vercel/postgres package handles pooling internally
       }
@@ -58,6 +58,16 @@ export class PostgresAdapter implements DatabaseAdapter {
     } catch (error) {
       console.error('Error fetching contribution:', error);
       return null;
+    }
+  }
+
+  async getContributionsByFilename(filename: string): Promise<Contribution[]> {
+    try {
+      const { rows } = await sql`SELECT * FROM contributions WHERE filename = ${filename}`;
+      return rows as Contribution[];
+    } catch (error) {
+      console.error('Error fetching contributions by filename:', error);
+      return [];
     }
   }
 
@@ -153,5 +163,43 @@ export class PostgresAdapter implements DatabaseAdapter {
   async getUserById(id: string): Promise<User | null> {
     const result = await sql`SELECT * FROM users WHERE id = ${id}`;
     return result.rows.length > 0 ? (result.rows[0] as User) : null;
+  }
+
+  async checkContributionConflicts(
+    filename: string,
+    lineNumber: number | null,
+    codeHash: string,
+    username: string
+  ): Promise<{ personalDuplicate: boolean; acceptedDuplicate: boolean; lineConflict: boolean }> {
+    try {
+      const { rows } = await sql`
+        WITH normalized_contributions AS (
+          SELECT 
+            id,
+            username,
+            filename,
+            line_number,
+            status,
+            REPLACE(REPLACE(REPLACE(LOWER(code), E'\n', ''), ' ', ''), E'\r', '') || filename as normalized_code
+          FROM contributions
+          WHERE filename = ${filename}
+        )
+        SELECT
+          COUNT(CASE WHEN normalized_code = ${codeHash} AND username = ${username} THEN 1 END) > 0 as personal_duplicate,
+          COUNT(CASE WHEN normalized_code = ${codeHash} AND status = 'accepted' THEN 1 END) > 0 as accepted_duplicate,
+          COUNT(CASE WHEN line_number = ${lineNumber} AND ${lineNumber} IS NOT NULL 
+                    AND username != ${username} AND status = 'pending' THEN 1 END) > 0 as line_conflict
+        FROM normalized_contributions
+      `;
+      
+      return {
+        personalDuplicate: rows[0]?.personal_duplicate || false,
+        acceptedDuplicate: rows[0]?.accepted_duplicate || false,
+        lineConflict: rows[0]?.line_conflict || false
+      };
+    } catch (error) {
+      console.error('Error checking contribution conflicts:', error);
+      return { personalDuplicate: false, acceptedDuplicate: false, lineConflict: false };
+    }
   }
 } 

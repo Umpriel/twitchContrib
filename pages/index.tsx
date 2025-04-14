@@ -11,7 +11,6 @@ import 'prismjs/components/prism-json';
 import { ArrowPathIcon, ClipboardIcon, ClipboardDocumentCheckIcon } from '@heroicons/react/24/outline';
 import db from '../lib/db';
 import UserProfile from '../components/UserProfile';
-import io from 'socket.io-client';
 import Link from 'next/link';
 
 interface Contribution {
@@ -36,34 +35,33 @@ export const getServerSideProps: GetServerSideProps = async () => {
 export default function Home({ initialContributions }: { initialContributions: Contribution[] }) {
   const [contributions, setContributions] = useState<Contribution[]>(initialContributions);
   const [copiedId, setCopiedId] = useState<number | null>(null);
-  const [isPollingEnabled, setIsPollingEnabled] = useState(true);
   const [dataUpdated, setDataUpdated] = useState(false);
-  const [isPolling, setIsPolling] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isChannelOwner, setIsChannelOwner] = useState(false);
   const [authCheckComplete, setAuthCheckComplete] = useState(false);
-  const [userInfo, setUserInfo] = useState<{username: string} | null>(null);
-  //const pollingIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
+  const [userInfo, setUserInfo] = useState<{ username: string } | null>(null);
 
+  // Modified refreshContributions to handle manual refresh only
   const refreshContributions = useCallback(async () => {
-    setIsPolling(true);
+    setIsLoading(true);
     try {
       const response = await fetch('/api/contributions');
       const data = await response.json();
-      
-      const hasNewItems = data.some((newItem: Contribution) => 
+
+      const hasNewItems = data.some((newItem: Contribution) =>
         !contributions.some(existingItem => existingItem.id === newItem.id)
       );
-      
+
       const hasStatusChanges = data.some((newItem: Contribution) => {
         const existingItem = contributions.find(item => item.id === newItem.id);
         return existingItem && existingItem.status !== newItem.status;
       });
-      
+
       if (hasNewItems || hasStatusChanges) {
         setContributions(data);
         setDataUpdated(true);
-        
+
         setTimeout(() => setDataUpdated(false), 2000);
       } else {
         setContributions(data);
@@ -71,7 +69,7 @@ export default function Home({ initialContributions }: { initialContributions: C
     } catch (error) {
       console.error('Failed to refresh contributions:', error);
     } finally {
-      setIsPolling(false);
+      setIsLoading(false);
     }
   }, [contributions]);
 
@@ -80,55 +78,72 @@ export default function Home({ initialContributions }: { initialContributions: C
       try {
         const response = await fetch('/api/check-auth');
         const data = await response.json();
-        
+
         setIsAuthenticated(data.authenticated);
         setIsChannelOwner(data.isChannelOwner);
-        
+
         if (data.authenticated) {
           const userResponse = await fetch('/api/user');
           const userData = await userResponse.json();
           setUserInfo(userData);
-          
+
           fetch('/api/init-twitch').catch(console.error);
         }
-        
+
         setAuthCheckComplete(true);
       } catch (error) {
         console.error('Failed to check auth status:', error);
         setAuthCheckComplete(true);
       }
     };
-    
+
     checkAuth();
-    
+
     const highlightTimer = setTimeout(() => {
       Prism.highlightAll();
     }, 100);
-    
+
     return () => clearTimeout(highlightTimer);
   }, []);
 
-  useEffect(() => {
-    const pollInterval = setInterval(() => {
-      if (isPollingEnabled) {
-        refreshContributions();
-      }
-    }, 10000);
-    
-    return () => clearInterval(pollInterval);
-  }, [isPollingEnabled, refreshContributions]);
+  const copyToClipboard = (id: number, text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
 
-  useEffect(() => {
-    const socket = io();
-    
-    socket.on('refreshContributions', () => {
+  const updateStatus = async (id: number, status: 'accepted' | 'rejected') => {
+    try {
+      await fetch('/api/contributions', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ id, status })
+      });
+
       refreshContributions();
-    });
-    
-    return () => {
-      socket.disconnect();
-    };
-  }, [refreshContributions]);
+    } catch (error) {
+      console.error('Failed to update status:', error);
+    }
+  };
+
+  const sendToVSCodeWithPath = async (id: number) => {
+    try {
+      const response = await fetch('/api/send-to-vscode', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ id })
+      });
+
+      const result = await response.json();
+      console.log(result.message);
+    } catch (error) {
+      console.error('Failed to send to VSCode:', error);
+    }
+  };
 
   const getLanguage = (filename: string) => {
     const ext = filename.split('.').pop()?.toLowerCase();
@@ -140,49 +155,6 @@ export default function Home({ initialContributions }: { initialContributions: C
       case 'css': return 'css';
       case 'json': return 'json';
       default: return 'typescript';
-    }
-  };
-
-  const updateStatus = async (id: number, status: 'accepted' | 'rejected') => {
-    await fetch('/api/contributions', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, status })
-    });
-
-    setContributions(contributions.map(contrib =>
-      contrib.id === id ? { ...contrib, status } : contrib
-    ));
-  };
-
-  const copyToClipboard = async (id: number, code: string) => {
-    try {
-      await navigator.clipboard.writeText(code);
-      setCopiedId(id);
-      setTimeout(() => setCopiedId(null), 2000);
-    } catch (err) {
-      console.error('Failed to copy code:', err);
-    }
-  };
-
-  const sendToVSCodeWithPath = async (id: number) => {
-    try {
-      const filePath = prompt(
-        "Enter path where file should be created (optional):\n" +
-        "Leave blank to select in VSCode, or enter a path on your system.",
-        ""
-      );
-      
-      await fetch('/api/send-to-vscode', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, filePath })
-      });
-      
-      alert('Contribution sent to VSCode!');
-    } catch (error) {
-      console.error('Failed to send to VSCode:', error);
-      alert('Failed to send to VSCode. Make sure the VSCode extension is installed and running.');
     }
   };
 
@@ -198,7 +170,7 @@ export default function Home({ initialContributions }: { initialContributions: C
           <p className="mb-8 text-lg text-center">
             Please log in with your Twitch account to access TwitchContrib.
           </p>
-          <Link 
+          <Link
             href="/auth-twitch"
             className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-md transition-colors text-lg"
           >
@@ -208,14 +180,14 @@ export default function Home({ initialContributions }: { initialContributions: C
       ) : (
         <div className="max-w-[90%] mx-auto p-6">
           <h1 className="text-4xl font-bold mb-8 text-purple-400">TwitchContrib</h1>
-          
+
           <div className="absolute top-4 right-4">
-            <UserProfile 
-              username={userInfo?.username || 'User'} 
-              isChannelOwner={isChannelOwner} 
+            <UserProfile
+              username={userInfo?.username || 'User'}
+              isChannelOwner={isChannelOwner}
             />
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div className="w-full">
               <div className="flex items-center justify-between mb-6">
@@ -228,27 +200,17 @@ export default function Home({ initialContributions }: { initialContributions: C
                   )}
                 </div>
                 <div className="flex items-center gap-2">
-                  <button 
+                  <button
                     onClick={refreshContributions}
-                    className="flex items-center gap-2 px-3 py-2 bg-blue-500 hover:bg-blue-600 rounded-md transition-colors"
-                    disabled={isPolling}
-                  >
-                    <ArrowPathIcon className={`w-5 h-5 ${isPolling ? 'animate-spin' : ''}`} />
-                    <span>{isPolling ? 'Refreshing...' : 'Refresh'}</span>
-                  </button>
-                  <div className="flex items-center gap-2 ml-4">
-                    <span className="text-sm text-gray-400">Auto-refresh:</span>
-                    <button 
-                      onClick={() => setIsPollingEnabled(!isPollingEnabled)}
-                      className={`px-3 py-1 rounded-md transition-colors ${
-                        isPollingEnabled 
-                          ? 'bg-green-600 hover:bg-green-700' 
-                          : 'bg-gray-600 hover:bg-gray-700'
+                    disabled={isLoading}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${isLoading
+                        ? 'bg-gray-700 cursor-not-allowed'
+                        : 'bg-blue-600 hover:bg-blue-700'
                       }`}
-                    >
-                      {isPollingEnabled ? 'On' : 'Off'}
-                    </button>
-                  </div>
+                  >
+                    <ArrowPathIcon className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
+                    <span>{isLoading ? 'Refreshing...' : 'Refresh'}</span>
+                  </button>
                 </div>
               </div>
               <div className="space-y-6">
@@ -350,9 +312,8 @@ export default function Home({ initialContributions }: { initialContributions: C
                         )}
                       </button>
                     </div>
-                    <p className={`mt-4 font-semibold ${
-                      contribution.status === 'accepted' ? 'text-green-400' : 'text-red-400'
-                    }`}>
+                    <p className={`mt-4 font-semibold ${contribution.status === 'accepted' ? 'text-green-400' : 'text-red-400'
+                      }`}>
                       Status: {contribution.status.charAt(0).toUpperCase() + contribution.status.slice(1)}
                     </p>
                     {contribution.status === 'accepted' && (

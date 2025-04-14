@@ -21,6 +21,7 @@ export interface User {
 export interface DatabaseAdapter {
   getContributions(): Promise<Contribution[]>;
   getContribution(id: number): Promise<Contribution | null>;
+  getContributionsByFilename(filename: string): Promise<Contribution[]>;
   updateStatus(id: number, status: string): Promise<void>;
   createContribution(
     username: string, 
@@ -39,4 +40,14 @@ export interface DatabaseAdapter {
   createOrUpdateUser(user: Omit<User, 'created_at'>): Promise<User>;
   getUserByUsername(username: string): Promise<User | null>;
   getUserById(id: string): Promise<User | null>;
+  checkContributionConflicts(
+    filename: string,
+    lineNumber: number | null,
+    codeHash: string,
+    username: string
+  ): Promise<{ 
+    personalDuplicate: boolean; 
+    acceptedDuplicate: boolean; 
+    lineConflict: boolean;
+  }>;
 } 

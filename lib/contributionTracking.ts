@@ -2,6 +2,7 @@
 
 import { getChatClient, verifyChatClient } from './twitchAuth';
 import db from './db';
+import { Client } from 'tmi.js';
 
 
 const userSubmissions: { [key: string]: { time: number; hash: string } } = {};
@@ -14,7 +15,6 @@ const recentMessages = new Map<string, number>();
 
 let listenersInitialized = false;
 
-verifyChatClient();
 
 const createCodeHash = (filename: string, code: string) => {
   // Normalize code more thoroughly:
@@ -25,45 +25,50 @@ const createCodeHash = (filename: string, code: string) => {
   const normalizedCode = code
     .replace(/\/\/.*$/gm, '') // Remove single-line comments
     .replace(/\/\*[\s\S]*?\*\//g, '') // Remove multi-line comments
-    .replace(/\s+/g, '') // Remove all whitespace
     .toLowerCase() // Case-insensitive
-    .replace(/['"]/g, '"'); // Normalize quotes
+    .replace(/\n/g, '') // Remove newlines
+    .replace(/\s+/g, '') // Remove all whitespace
+    .replace(/\r/g, ''); // Remove carriage returns
 
-  return `${filename}:${normalizedCode}`;
+  return normalizedCode + filename;
 };
 
 
 const parseContribution = (message: string) => {
-
+  // Remove the "!contrib" command and trim whitespace
   const cleanMessage = message.replace(/!contrib/g, '').trim();
   
-
+  // Split by whitespace to process arguments
   const parts = cleanMessage.split(/\s+/);
   if (parts.length < 2) return null; // Need at least filename and code
-
-
+  
   const filename = parts[0];
   let lineNumber = null;
   let codeStartIndex = 1;
 
-
-  if (parts[1].startsWith('line:')) {
-    lineNumber = parseInt(parts[1].substring(5));
-    codeStartIndex = 2;
+  // Look for -l flag followed by a number
+  for (let i = 1; i < parts.length - 1; i++) {
+    if (parts[i] === '-l') {
+      // Line number is the next part
+      lineNumber = parseInt(parts[i + 1]);
+      if (!isNaN(lineNumber)) {
+        // If valid line number, code starts after line number
+        codeStartIndex = i + 2;
+      }
+      break;
+    }
   }
 
-
+  // Join the remaining parts as code
   let code = parts.slice(codeStartIndex).join(' ');
-  
-
   code = code.replace(/\\n/g, '\n');
-  
 
+  // Handle indentation and code formatting as you did before
   const lines = code.split('\n');
   let indentLevel = 0;
   const indentedLines = lines.map(line => {
     const trimmedLine = line.trim();
-    
+
 
     if (trimmedLine.endsWith('{')) {
       const spaces = '  '.repeat(indentLevel);
@@ -78,9 +83,9 @@ const parseContribution = (message: string) => {
       return spaces + trimmedLine;
     }
   });
-  
+
   code = indentedLines.join('\n');
-  
+
   return { filename, lineNumber, code };
 };
 
@@ -104,6 +109,16 @@ const parseContribution = (message: string) => {
 */
 
 
+const contributionsByFilename = async (filename: string) => {
+  try {
+    const contributions = await db.getContributionsByFilename(filename);
+    return contributions;
+  } catch (error) {
+    console.error('Error fetching contributions by filename:', error);
+    return [];
+  }
+};
+
 setInterval(() => {
   const now = Date.now();
   for (const [username, submission] of Object.entries(userSubmissions)) {
@@ -121,171 +136,153 @@ setInterval(() => {
 setInterval(() => {
   const now = Date.now();
   let cleanupCount = 0;
-  
+
   recentMessages.forEach((timestamp, messageKey) => {
     if (now - timestamp > DUPLICATE_MESSAGE_WINDOW) {
       recentMessages.delete(messageKey);
       cleanupCount++;
     }
   });
-  
+
   if (cleanupCount > 0) {
     console.log(`Cleaned up ${cleanupCount} outdated message records, ${recentMessages.size} remaining`);
   }
 }, DUPLICATE_MESSAGE_WINDOW);
 
 
-export async function processMessage(channel: string, tags: Record<string, unknown>, message: string) {
-
+export async function processMessage(channel: string, tags: Record<string, unknown>, message: string, client: Client) {
+  verifyChatClient(client);
   if (tags['id'] && processedMessageIds.has(String(tags['id']))) {
     return;
   }
-  
 
   if (tags['id']) {
     processedMessageIds.add(String(tags['id']));
   }
-  
 
   if (!message.startsWith('!contrib')) {
     return;
   }
-  
+
+  // Check for help command - do this early before any other processing
+  const cleanMessage = message.trim().toLowerCase();
+  if (cleanMessage === '!contrib --help' || cleanMessage === '!contrib -h' || cleanMessage === '!contrib help') {
+    const username = String(tags['display-name'] || tags['username']);
+    try {
+      await client.say(channel, `@${username} 📝 HOW TO USE !CONTRIB:
+
+1️⃣ For specific line: !contrib filename -l line_number code
+2️⃣ Without line: !contrib filename code
+
+📌 EXAMPLES:
+• !contrib main.js -l 10 console.log("Hello World");
+• !contrib style.css body { margin: 0; }`);
+    } catch (error) {
+      console.error('Error sending help message:', error);
+    }
+    return; // Exit early - don't process as a contribution
+  }
+
+  // Continue with existing contribution processing
   const username = String(tags['display-name'] || tags['username']);
-  
   console.log(`Processing contribution from ${username}: ${message}`);
-  
 
   const contribution = parseContribution(message);
   if (!contribution) {
-
-    const client = await getChatClient();
-    client.say(channel, `@${username} Invalid contribution format. Use: !contrib filename:line_number:code`);
+    client.say(channel, `@${username} Invalid contribution format. Use: !contrib filename -l line_number code or !contrib --help`);
     return;
   }
-  
+
   const { filename, lineNumber, code } = contribution;
-  
-
   const codeHash = createCodeHash(filename, code);
-  
+  const formattedChannel = channel.startsWith('#') ? channel : `#${channel}`;
 
+  // Rate limiting check
   const now = Date.now();
   if (userSubmissions[username]) {
     const timeSinceLastSubmission = now - userSubmissions[username].time;
-    
-
     if (timeSinceLastSubmission < SUBMISSION_COOLDOWN) {
       console.log(`Rate limiting ${username}, submitted too quickly`);
-      return;
-    }
-    
-
-    if (userSubmissions[username].hash === codeHash) {
-      console.log(`Duplicate contribution from ${username}`);
-      
-
       try {
-        const client = await getChatClient();
-        const formattedChannel = channel.startsWith('#') ? channel : `#${channel}`;
-        await client.say(formattedChannel, `@${username} You've already submitted this exact contribution.`);
+        await client.say(formattedChannel, `@${username} Chill out Dude, and stop spamming before i smack you.`);
       } catch (error) {
-        console.error('Error sending duplicate notification:', error);
+        console.error('Error sending rate limit notification:', error);
       }
-      
       return;
     }
   }
-  
 
-/* SIMILARITY CHECK DISABLED
-  const similarContributions = await hasSimilarContribution(username, filename, code);
-  if (similarContributions.length > 0) {
-    console.log(`Similar contribution(s) already exist from ${username}, found ${similarContributions.length}`);
+  // Enhanced conflict checks with username
+  try {
+    const conflicts = await db.checkContributionConflicts(filename, lineNumber, codeHash, username);
     
-    // Add notification for similar contributions - send only ONCE
-    try {
-      const client = await getChatClient();
-      const formattedChannel = channel.startsWith('#') ? channel : `#${channel}`;
-      await client.say(formattedChannel, `@${username} Similar contribution already exists.`);
-    } catch (error) {
-      console.error('Error sending duplicate notification:', error);
+    // Personal duplicate check (same user, same code)
+    if (conflicts.personalDuplicate) {
+      console.log(`Personal duplicate from ${username}`);
+      try {
+        await client.say(formattedChannel, `@${username} You've already submitted this exact code.`);
+      } catch (error) {
+        console.error('Error sending notification:', error);
+      }
+      return;
     }
     
-    // Save the contribution anyway, but mark it as a duplicate
-    await db.createContribution(
-      username,
-      filename,
-      lineNumber,
-      code,
-      'duplicate'  // Mark as duplicate
-    );
+    // Global accepted check (any user, code already accepted)
+    if (conflicts.acceptedDuplicate) {
+      console.log(`Accepted duplicate from ${username}`);
+      try {
+        await client.say(formattedChannel, `@${username} This code has already been accepted.`);
+      } catch (error) {
+        console.error('Error sending notification:', error);
+      }
+      return;
+    }
     
-    return;
+    // Line conflict check (different user, same line, pending status)
+    if (conflicts.lineConflict) {
+      console.log(`Line conflict from ${username} for line ${lineNumber}`);
+      try {
+        await client.say(formattedChannel, `@${username} Line ${lineNumber} already has a pending submission from another user. Try a different line!`);
+      } catch (error) {
+        console.error('Error sending notification:', error);
+      }
+      return;
+    }
+    
+  } catch (error) {
+    console.error('Error checking for conflicts:', error);
+    // Continue with submission even if conflict check fails
   }
-  */
-  
 
+  // Save contribution to database
   try {
-    console.log('Attempting to save contribution to database...');
     const result = await db.createContribution(
       username,
       filename,
       lineNumber,
       code
     );
-    console.log('Database save result:', result);
-    
+
     userSubmissions[username] = {
       time: now,
       hash: codeHash
     };
+
+    console.log(`Contribution from ${username} saved in the DB successfully`);
     
-    // Trigger a refresh for connected clients
+    // Send confirmation message
     try {
-      // For server-side fetch, we need absolute URLs
-      const redirectUri = process.env.NEXT_PUBLIC_TWITCH_REDIRECT_URI || '';
-      const baseUrl = redirectUri.replace('/api/auth/callback', '');
-      
-      await fetch(`${baseUrl}/api/refresh-trigger`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      });
-    } catch (refreshError) {
-      console.error('Failed to send refresh trigger:', refreshError);
-    }
-    
-    console.log('Getting chat client to send notification');
-    const client = await getChatClient();
-    console.log('Chat client connected:', !!client);
-    console.log('Chat client options:', JSON.stringify(client.getOptions(), null, 2));
-    console.log('Chat client channels:', client.getChannels());
-    console.log('Sending to channel:', channel);
-    
-    try {
-
-      const message = `@${username} Contribution saved! Thank you for your code snippet.`;
-      console.log(`Attempting to send: "${message}" to ${channel}`);
-      
-
-      const formattedChannel = channel.startsWith('#') ? channel : `#${channel}`;
-      
-
-      await client.say(formattedChannel, message);
-      
+      await client.say(channel, `@${username} Contribution saved! Thank you for your code snippet.`);
       console.log('Chat message sent successfully');
     } catch (chatError) {
       console.error('Error sending chat message:', chatError);
     }
     
-    console.log(`Contribution from ${username} saved successfully`);
   } catch (error) {
     console.error('Error saving contribution:', error);
     console.error('Error details:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
-    
+
     try {
-      const client = await getChatClient();
-      const formattedChannel = channel.startsWith('#') ? channel : `#${channel}`;
       await client.say(formattedChannel, `@${username} Failed to save contribution. Please try again later.`);
     } catch (chatError) {
       console.error('Additionally failed to send error notification:', chatError);
@@ -294,7 +291,7 @@ export async function processMessage(channel: string, tags: Record<string, unkno
 }
 
 
-export async function initContributionTracking() {
+export async function initContributionTracking(client: Client) {
   try {
 
     if (listenersInitialized) {
@@ -302,18 +299,14 @@ export async function initContributionTracking() {
       return true;
     }
 
-    const client = await getChatClient();
-    
 
     client.on('message', (channel, tags, message, self) => {
 
       if (self) return;
-      
-
-      processMessage(channel, tags, message)
+      processMessage(channel, tags, message, client)
         .catch(err => console.error('Error processing message:', err));
     });
-    
+
     console.log('Contribution tracking initialized successfully');
     listenersInitialized = true;
     return true;
