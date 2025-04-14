@@ -74,6 +74,7 @@ export default function Home({ initialContributions }: { initialContributions: C
   }, [contributions]);
 
   useEffect(() => {
+    // pages/index.tsx - update the checkAuth function
     const checkAuth = async () => {
       try {
         const response = await fetch('/api/check-auth');
@@ -87,7 +88,7 @@ export default function Home({ initialContributions }: { initialContributions: C
           const userData = await userResponse.json();
           setUserInfo(userData);
 
-          fetch('/api/init-twitch').catch(console.error);
+          // We don't need to call /api/init-twitch anymore as it's initialized on server startup
         }
 
         setAuthCheckComplete(true);
@@ -204,8 +205,8 @@ export default function Home({ initialContributions }: { initialContributions: C
                     onClick={refreshContributions}
                     disabled={isLoading}
                     className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${isLoading
-                        ? 'bg-gray-700 cursor-not-allowed'
-                        : 'bg-blue-600 hover:bg-blue-700'
+                      ? 'bg-gray-700 cursor-not-allowed'
+                      : 'bg-blue-600 hover:bg-blue-700'
                       }`}
                   >
                     <ArrowPathIcon className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />

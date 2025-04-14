@@ -262,4 +262,12 @@ export class PostgresAdapter implements DatabaseAdapter {
       throw error;
     }
   }
+
+  async getUserByChannelName(channelName: string): Promise<User | null> {
+    const results = await this.query(
+      'SELECT * FROM users WHERE username = $1 AND is_channel_owner = true',
+      [channelName.toLowerCase()]
+    ) as any[];
+    return results && results.length > 0 ? results[0] as User : null;
+  };
 } 

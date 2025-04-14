@@ -238,4 +238,12 @@ export class SQLiteAdapter implements DatabaseAdapter {
       throw error;
     }
   }
+
+  async getUserByChannelName(channelName: string): Promise<User | null> {
+    const results = await this.query(
+      'SELECT * FROM users WHERE username = ? AND is_channel_owner = 1',
+      [channelName.toLowerCase()]
+    ) as any[];
+    return results && results.length > 0 ? results[0] as User : null;
+  }
 } 

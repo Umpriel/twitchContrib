@@ -2,66 +2,120 @@ import tmi, { Client } from 'tmi.js';
 import { getUserByChannelOwner } from './db';
 import { User } from './db-interface';  // Make sure this import exists
 
+// Make this a true global singleton using Node.js global object
+declare global {
+  var _twitchChatClient: Client | null;
+  var _twitchIsConnecting: boolean;
+  var _twitchConnectionPromise: Promise<Client> | null;
+  var _hasTestedAuth: boolean;
+}
 
-let chatClientPromise: Promise<tmi.Client> | null = null;
-
+// Initialize globals if they don't exist
+global._twitchChatClient = global._twitchChatClient || null;
+global._twitchIsConnecting = global._twitchIsConnecting || false;
+global._twitchConnectionPromise = global._twitchConnectionPromise || null;
+global._hasTestedAuth = global._hasTestedAuth || false;
 
 export const resetChatClient = async () => {
-  if (chatClientPromise) {
-    try {
-      const client = await chatClientPromise;
-      console.log('Disconnecting existing chat client');
-      await client.disconnect();
-    } catch (error) {
-      console.error('Error disconnecting chat client:', error);
-    }
-    chatClientPromise = null;
-    console.log('Chat client reset completed');
+  console.log('User logged out, but keeping client connection');
+  return true;
+};
+
+export const verifyChatClient = (client: Client): boolean => {
+  try {
+    console.log('Chat client details:');
+    console.log('- Connected:', client.readyState() === 'OPEN');
+    console.log('- Channels:', client.getChannels());
+    return client.readyState() === 'OPEN';
+  } catch (error) {
+    console.error('Error verifying chat client:', error);
+    return false;
   }
 };
 
-
 export const initAndGetChatClient = async (accessToken?: string) => {
-  if (!chatClientPromise) {
-    if (!process.env.TWITCH_CHANNEL) {
-      throw new Error('Missing TWITCH_CHANNEL environment variable');
-    }
-    
+  // If already connected, return existing client
+  if (global._twitchChatClient && global._twitchChatClient.readyState() === 'OPEN') {
+    console.log('Using existing chat client connection');
+    return global._twitchChatClient;
+  }
+  
+  // If connection is in progress, wait for it
+  if (global._twitchIsConnecting && global._twitchConnectionPromise) {
+    console.log('Connection already in progress, waiting...');
+    return global._twitchConnectionPromise;
+  }
+  
+  if (!process.env.TWITCH_CHANNEL) {
+    throw new Error('Missing TWITCH_CHANNEL environment variable');
+  }
+  
+  global._twitchIsConnecting = true;
+  global._twitchConnectionPromise = (async () => {
     try {
+      console.log(`Initializing chat client for channel: ${process.env.TWITCH_CHANNEL}`);
+      console.log(`Authentication: ${accessToken ? 'Using token' : 'Anonymous'}`);
+      
+      if (!accessToken) {
+        console.warn('WARNING: No access token provided. Bot will only be able to read messages, not send them.');
+      }
 
-      const client = new tmi.Client({
-        options: { debug: true },  // Enable debug mode like in old code
+      // Disconnect existing client if any
+      if (global._twitchChatClient) {
+        console.log('Disconnecting existing client before creating a new one');
+        try {
+          await global._twitchChatClient.disconnect();
+        } catch (e) {
+          console.error('Error disconnecting existing client:', e);
+        }
+      }
+
+      // Create new client
+      global._twitchChatClient = new tmi.Client({
+        options: { debug: true },
         identity: accessToken ? {
           username: process.env.TWITCH_BOT_USERNAME || process.env.TWITCH_CHANNEL,
           password: `oauth:${accessToken}`
         } : undefined,
-        channels: [process.env.TWITCH_CHANNEL]
+        channels: [process.env.TWITCH_CHANNEL || 'defaultchannel']
       });
       
-      await client.connect();
+      await global._twitchChatClient.connect();
       
-
-      const connectedChannels = client.getChannels();
-      if (connectedChannels.length === 0) {
-        console.log(`Joining channel: ${process.env.TWITCH_CHANNEL}`);
-        await client.join(process.env.TWITCH_CHANNEL);
+      // Verify the connection was successful
+      const readyState = global._twitchChatClient.readyState();
+      console.log(`Client connected with state: ${readyState}`);
+      console.log(`Connected channels: ${global._twitchChatClient.getChannels().join(', ')}`);
+      
+      // Test authentication only once
+      if (accessToken && !global._hasTestedAuth) {
+        try {
+          await global._twitchChatClient.say(process.env.TWITCH_CHANNEL || 'umpriel', 'Bot connected and authenticated successfully!');
+          console.log('Authentication test successful - bot can send messages');
+          global._hasTestedAuth = true;
+        } catch (e) {
+          console.error('Authentication test failed - bot cannot send messages:', e);
+          // Don't throw here, just log the error and continue
+        }
       }
       
-      
-      chatClientPromise = Promise.resolve(client);
-      return client;
+      return global._twitchChatClient;
     } catch (error) {
       console.error('Failed to initialize chat client:', error);
+      // If we failed, allow retry
+      global._twitchChatClient = null;
       throw error;
+    } finally {
+      global._twitchIsConnecting = false;
+      global._twitchConnectionPromise = null;
     }
-  }
+  })();
   
-  return chatClientPromise;
+  return global._twitchConnectionPromise;
 };
 
-
 export const getChatClient = async () => {
-  if (!chatClientPromise) {
+  if (!global._twitchChatClient) {
     console.log('No existing chat client, initializing a new one');
 
     try {
@@ -78,9 +132,8 @@ export const getChatClient = async () => {
       return initAndGetChatClient();
     }
   }
-  return chatClientPromise;
+  return global._twitchChatClient;
 };
-
 
 export async function exchangeCode(code: string) {
   const response = await fetch('https://id.twitch.tv/oauth2/token', {
@@ -123,17 +176,4 @@ export async function refreshAuthToken(refreshToken: string) {
   }
 
   return response.json();
-}
-
-
-export const verifyChatClient = async (client: Client) => {
-  try {
-    console.log('Chat client details:');
-    console.log('- Connected:', client.readyState() === 'OPEN');
-    console.log('- Channels:', client.getChannels());
-    return client.readyState() === 'OPEN';
-  } catch (error) {
-    console.error('Error verifying chat client:', error);
-    return false;
-  }
-}; 
+} 

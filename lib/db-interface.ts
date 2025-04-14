@@ -66,4 +66,6 @@ export interface DatabaseAdapter {
    * Delete a contribution by ID
    */
   deleteContribution(id: number): Promise<void>;
+
+  getUserByChannelName(channelName: string): Promise<User | null>;
 } 

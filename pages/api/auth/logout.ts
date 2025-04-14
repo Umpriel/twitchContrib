@@ -7,12 +7,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ error: 'Method not allowed' });
   }
   
-  // Reset the chat client before logging out
+  // Reset the chat client state (but don't disconnect)
   try {
     await resetChatClient();
-    console.log('Chat client reset during logout');
+    console.log('Chat client state updated during logout');
   } catch (error) {
-    console.error('Error resetting chat client during logout:', error);
+    console.error('Error updating chat client state during logout:', error);
   }
 
   const cookie = serialize('twitch_user_id', '', {
