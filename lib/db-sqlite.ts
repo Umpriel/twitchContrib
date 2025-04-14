@@ -185,4 +185,17 @@ export class SQLiteAdapter implements DatabaseAdapter {
       return { personalDuplicate: false, acceptedDuplicate: false, lineConflict: false };
     }
   }
+
+  async updateContribution(id: number, data: Partial<Contribution>): Promise<void> {
+    const updateFields = Object.keys(data)
+      .map(field => `${field} = ?`)
+      .join(', ');
+    
+    const values = [...Object.values(data), id];
+    
+    const stmt = this.db.prepare(
+      `UPDATE contributions SET ${updateFields} WHERE id = ?`
+    );
+    stmt.run(...values);
+  }
 } 

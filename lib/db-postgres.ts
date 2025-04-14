@@ -202,4 +202,25 @@ export class PostgresAdapter implements DatabaseAdapter {
       return { personalDuplicate: false, acceptedDuplicate: false, lineConflict: false };
     }
   }
+
+  async updateContribution(id: number, data: Partial<Contribution>): Promise<void> {
+    try {
+      // Convert the data object to a set of fields for SQL update
+      const updateFields = Object.entries(data)
+        .map(([key, value], index) => `${key} = $${index + 1}`)
+        .join(', ');
+      
+      // Extract values in the same order as the fields
+      const values = Object.values(data);
+      
+      // Execute the update query with raw SQL
+      await sql.query(
+        `UPDATE contributions SET ${updateFields} WHERE id = $${values.length + 1}`,
+        [...values, id]
+      );
+    } catch (error) {
+      console.error('Error updating contribution:', error);
+      throw error;
+    }
+  }
 } 

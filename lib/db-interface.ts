@@ -50,4 +50,5 @@ export interface DatabaseAdapter {
     acceptedDuplicate: boolean; 
     lineConflict: boolean;
   }>;
+  updateContribution(id: number, data: Partial<Contribution>): Promise<void>;
 } 
