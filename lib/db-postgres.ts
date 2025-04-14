@@ -207,7 +207,7 @@ export class PostgresAdapter implements DatabaseAdapter {
     try {
       // Convert the data object to a set of fields for SQL update
       const updateFields = Object.entries(data)
-        .map(([key, value], index) => `${key} = $${index + 1}`)
+        .map(([key], index) => `${key} = $${index + 1}`)
         .join(', ');
       
       // Extract values in the same order as the fields
@@ -220,6 +220,45 @@ export class PostgresAdapter implements DatabaseAdapter {
       );
     } catch (error) {
       console.error('Error updating contribution:', error);
+      throw error;
+    }
+  }
+
+  async getUserContributions(username: string, limit: number): Promise<Contribution[]> {
+    try {
+      const { rows } = await sql`
+        SELECT * FROM contributions 
+        WHERE username = ${username}
+        ORDER BY created_at DESC
+        LIMIT ${limit}
+      `;
+      return rows as Contribution[];
+    } catch (error) {
+      console.error('Error fetching user contributions:', error);
+      return [];
+    }
+  }
+
+  async getFileContributions(filename: string, limit: number): Promise<Contribution[]> {
+    try {
+      const { rows } = await sql`
+        SELECT * FROM contributions 
+        WHERE filename = ${filename}
+        ORDER BY created_at DESC
+        LIMIT ${limit}
+      `;
+      return rows as Contribution[];
+    } catch (error) {
+      console.error('Error fetching file contributions:', error);
+      return [];
+    }
+  }
+
+  async deleteContribution(id: number): Promise<void> {
+    try {
+      await sql`DELETE FROM contributions WHERE id = ${id}`;
+    } catch (error) {
+      console.error('Error deleting contribution:', error);
       throw error;
     }
   }

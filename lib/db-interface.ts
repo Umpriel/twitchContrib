@@ -51,4 +51,19 @@ export interface DatabaseAdapter {
     lineConflict: boolean;
   }>;
   updateContribution(id: number, data: Partial<Contribution>): Promise<void>;
+  
+  /**
+   * Get recent contributions for a specific user
+   */
+  getUserContributions(username: string, limit: number): Promise<Contribution[]>;
+  
+  /**
+   * Get recent contributions for a specific file
+   */
+  getFileContributions(filename: string, limit: number): Promise<Contribution[]>;
+  
+  /**
+   * Delete a contribution by ID
+   */
+  deleteContribution(id: number): Promise<void>;
 } 

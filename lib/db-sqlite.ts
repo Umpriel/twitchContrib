@@ -198,4 +198,44 @@ export class SQLiteAdapter implements DatabaseAdapter {
     );
     stmt.run(...values);
   }
+
+  async getUserContributions(username: string, limit: number): Promise<Contribution[]> {
+    try {
+      const stmt = this.db.prepare(`
+        SELECT * FROM contributions 
+        WHERE username = ? 
+        ORDER BY created_at DESC
+        LIMIT ?
+      `);
+      return stmt.all(username, limit) as Contribution[];
+    } catch (error) {
+      console.error('Error fetching user contributions:', error);
+      return [];
+    }
+  }
+
+  async getFileContributions(filename: string, limit: number): Promise<Contribution[]> {
+    try {
+      const stmt = this.db.prepare(`
+        SELECT * FROM contributions 
+        WHERE filename = ? 
+        ORDER BY created_at DESC
+        LIMIT ?
+      `);
+      return stmt.all(filename, limit) as Contribution[];
+    } catch (error) {
+      console.error('Error fetching file contributions:', error);
+      return [];
+    }
+  }
+
+  async deleteContribution(id: number): Promise<void> {
+    try {
+      const stmt = this.db.prepare('DELETE FROM contributions WHERE id = ?');
+      stmt.run(id);
+    } catch (error) {
+      console.error('Error deleting contribution:', error);
+      throw error;
+    }
+  }
 } 

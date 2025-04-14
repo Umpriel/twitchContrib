@@ -5,25 +5,24 @@ export class HelpCommand implements CommandHandler {
     const cleanMessage = message.trim().toLowerCase();
     return cleanMessage === '!contrib --help' || 
            cleanMessage === '!contrib -h' || 
-           cleanMessage === '!contrib help';
+           cleanMessage === '!contrib help' ||
+           cleanMessage === '!contrib --usage' ||
+           cleanMessage === '!contrib --options';
   }
 
   async execute(context: CommandContext): Promise<boolean> {
-    const { channel, username, client } = context;
+    const { channel, username, message, client } = context;
+    const cleanMessage = message.trim().toLowerCase();
     
     try {
-      await client.say(channel, `@${username} 📝 HOW TO USE !CONTRIB:
-
-1️⃣ For specific line: !contrib filename -l line_number code
-2️⃣ Without line: !contrib filename code
-3️⃣ Append to existing: !contrib -A contrib_id additional_code
-4️⃣ Use \\n for line breaks: !contrib file.js function() {\\n  console.log("new line");\\n}
-
-📌 EXAMPLES:
-• !contrib main.js -l 10 console.log("Hello World");
-• !contrib style.css body { margin: 0; }
-• !contrib -A 42 .then(data => console.log(data));
-• !contrib -A 42 \\nreturn result; // Adds code on a new line`);
+      if (cleanMessage === '!contrib --usage') {
+        await client.say(channel, `@${username} 📝 !CONTRIB USAGE: [filename] [-l line_number] [code] | [-A ID code] | [-0 ID code] | [-C ID code] | [-D ID] | [-ls] | [-grep filename] | [-status ID] | Use \\n for newlines`);
+      } else if (cleanMessage === '!contrib --options') {
+        await client.say(channel, `@${username} !CONTRIB OPTIONS: -l=line number, -A=append, -0=prepend, -C=replace, -D=delete, -ls=list yours, -grep=find by file, -status=check status. Use \\n for newlines.`);
+      } else {
+        // Default help message
+        await client.say(channel, `@${username} For !contrib usage syntax, type: !contrib --usage. For options definitions, type: !contrib --options`);
+      }
       
       return true; // Command handled successfully
     } catch (error) {

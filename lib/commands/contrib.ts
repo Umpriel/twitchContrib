@@ -7,11 +7,18 @@ import { isRateLimited } from '../utils/rate-limiter';
 
 export class ContribCommand implements CommandHandler {
   matches(message: string): boolean {
-    return message.startsWith('!contrib');
+    // If it's a specific command with flags, let the other command handlers catch it
+    if (message.match(/!contrib\s+(-[A0CDhlsgre]|--help|--usage|--options|help|-status|-grep|-ls)/i)) {
+      return false;
+    }
+    
+    // Check if it's a filename contribution command (starts with !contrib followed by something with a file extension)
+    const filePattern = /!contrib\s+[\w\/\.-]+\.\w+/i;
+    return filePattern.test(message);
   }
 
   async execute(context: CommandContext): Promise<boolean> {
-    const { channel, username, message, client, tags } = context;
+    const { channel, username, message, client } = context;
     
     try {
       // Parse the contribution
