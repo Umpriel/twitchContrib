@@ -4,7 +4,55 @@ import db from './db';
 import { refreshAuthToken } from './twitchAuth';
 import { serialize } from 'cookie';
 
+type ApiHandler = (req: NextApiRequest, res: NextApiResponse) => Promise<void>;
+
 export async function withAuth(
+  req: NextApiRequest, 
+  res: NextApiResponse,
+  handler: ApiHandler
+): Promise<void> {
+  const cookies = parse(req.headers.cookie || '');
+  const userId = cookies.twitch_user_id;
+  
+  if (!userId) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+  
+  const user = await db.getUserById(userId);
+  
+  if (!user) {
+    return res.status(401).json({ error: 'User not found' });
+  }
+  
+  return handler(req, res);
+}
+
+export async function withChannelOwnerAuth(
+  req: NextApiRequest,
+  res: NextApiResponse,
+  handler: ApiHandler
+): Promise<void> {
+  const cookies = parse(req.headers.cookie || '');
+  const userId = cookies.twitch_user_id;
+  
+  if (!userId) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+  
+  const user = await db.getUserById(userId);
+  
+  if (!user) {
+    return res.status(401).json({ error: 'User not found' });
+  }
+  
+  if (!user.is_channel_owner) {
+    return res.status(403).json({ error: 'Only channel owners can access this resource' });
+  }
+  
+  return handler(req, res);
+}
+
+export async function withAuthHandler(
   req: NextApiRequest,
   res: NextApiResponse,
   handler: (req: NextApiRequest, res: NextApiResponse, userId: string) => Promise<void>

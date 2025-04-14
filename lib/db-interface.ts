@@ -18,6 +18,12 @@ export interface User {
   created_at: string;
 }
 
+export interface Settings {
+  welcomeMessage: string;
+  showRejected: boolean;
+  useHuhMode: boolean;
+}
+
 export interface DatabaseAdapter {
   getContributions(): Promise<Contribution[]>;
   getContribution(id: number): Promise<Contribution | null>;
@@ -68,4 +74,7 @@ export interface DatabaseAdapter {
   deleteContribution(id: number): Promise<void>;
 
   getUserByChannelName(channelName: string): Promise<User | null>;
+
+  getSettings(): Promise<Settings | null>;
+  updateSettings(settings: Settings): Promise<boolean>;
 } 

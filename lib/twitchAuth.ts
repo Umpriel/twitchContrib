@@ -3,18 +3,17 @@ import { getUserByChannelOwner } from './db';
 import { User } from './db-interface';  // Make sure this import exists
 
 // Make this a true global singleton using Node.js global object
+// This ensures it persists across module reloads in development
 declare global {
   var _twitchChatClient: Client | null;
   var _twitchIsConnecting: boolean;
   var _twitchConnectionPromise: Promise<Client> | null;
-  var _hasTestedAuth: boolean;
 }
 
 // Initialize globals if they don't exist
 global._twitchChatClient = global._twitchChatClient || null;
 global._twitchIsConnecting = global._twitchIsConnecting || false;
 global._twitchConnectionPromise = global._twitchConnectionPromise || null;
-global._hasTestedAuth = global._hasTestedAuth || false;
 
 export const resetChatClient = async () => {
   console.log('User logged out, but keeping client connection');
@@ -87,15 +86,15 @@ export const initAndGetChatClient = async (accessToken?: string) => {
       console.log(`Client connected with state: ${readyState}`);
       console.log(`Connected channels: ${global._twitchChatClient.getChannels().join(', ')}`);
       
-      // Test authentication only once
-      if (accessToken && !global._hasTestedAuth) {
+      // Test authentication if we have a token
+      if (accessToken) {
         try {
-          await global._twitchChatClient.say(process.env.TWITCH_CHANNEL || 'umpriel', 'Bot connected and authenticated successfully!');
+          const channel = process.env.TWITCH_CHANNEL || 'defaultchannel';
+          await global._twitchChatClient.say(channel, 'Bot connected and authenticated successfully!');
           console.log('Authentication test successful - bot can send messages');
-          global._hasTestedAuth = true;
         } catch (e) {
           console.error('Authentication test failed - bot cannot send messages:', e);
-          // Don't throw here, just log the error and continue
+          throw new Error('Failed to authenticate with Twitch. Please check your token.');
         }
       }
       

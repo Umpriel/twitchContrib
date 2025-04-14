@@ -1,6 +1,10 @@
 import Database from 'better-sqlite3';
 import path from 'path';
-import { DatabaseAdapter, Contribution, User } from './db-interface';
+import { DatabaseAdapter, Contribution, User, Settings } from './db-interface';
+
+interface SettingsRow {
+  data: string;
+}
 
 export class SQLiteAdapter implements DatabaseAdapter {
   private db: Database.Database;
@@ -245,5 +249,56 @@ export class SQLiteAdapter implements DatabaseAdapter {
       [channelName.toLowerCase()]
     ) as any[];
     return results && results.length > 0 ? results[0] as User : null;
+  }
+
+  async getSettings(): Promise<Settings | null> {
+    try {
+      this.db.exec(`
+        CREATE TABLE IF NOT EXISTS settings (
+          key TEXT PRIMARY KEY,
+          data TEXT NOT NULL
+        )
+      `);
+      
+      const result = this.db.prepare('SELECT data FROM settings WHERE key = ?')
+        .get('app_settings') as SettingsRow;
+      
+      if (result) {
+        return JSON.parse(result.data);
+      }
+      
+      const defaultSettings: Settings = {
+        welcomeMessage: 'Bot connected and authenticated successfully!',
+        showRejected: true,
+        useHuhMode: false
+      };
+      
+      this.db.prepare('INSERT INTO settings (key, data) VALUES (?, ?)')
+        .run('app_settings', JSON.stringify(defaultSettings));
+      
+      return defaultSettings;
+    } catch (error) {
+      console.error('Error getting settings from database:', error);
+      return null;
+    }
+  }
+
+  async updateSettings(settings: Settings): Promise<boolean> {
+    try {
+      this.db.exec(`
+        CREATE TABLE IF NOT EXISTS settings (
+          key TEXT PRIMARY KEY,
+          data TEXT NOT NULL
+        )
+      `);
+      
+      this.db.prepare('INSERT OR REPLACE INTO settings (key, data) VALUES (?, ?)')
+        .run('app_settings', JSON.stringify(settings));
+      
+      return true;
+    } catch (error) {
+      console.error('Database error updating settings:', error);
+      return false;
+    }
   }
 } 

@@ -1,3 +1,4 @@
+import db from '../db';
 import { CommandHandler, CommandContext } from './base';
 
 export class IncompleteArgumentCommand implements CommandHandler {
@@ -20,25 +21,25 @@ export class IncompleteArgumentCommand implements CommandHandler {
   private HUH = {
     appendNoId: "Append with no ID!! what do you want me to do, manifest it from stardust? Try: !contrib -A 123 console.log('this') Kreygasm",
   
-    appendNoCode: "Appending nothing? Bro, you’re out here coding with vibes and prayers. Feed me some actual logic: !contrib -A 123 your_code_goes_brrr NotLikeThis",
+    appendNoCode: "Appending nothing? Bro, you're out here coding with vibes and prayers. Feed me some actual logic: !contrib -A 123 your_code_goes_brrr NotLikeThis",
   
     prependNoId: "Prepending without an ID is like breathing in sand, can't do it can ya? SMOrc",
   
     prependNoCode: "Prepending nothing ha? bold move, Picasso. Toss me some code: !contrib -0 123 // Actually adding something HeyGuys",
   
-    replaceNoId: "A change command with zero ID? That’s not an operation, that’s a cry for help. !contrib -C 123 better_code_goes_here LUL",
+    replaceNoId: "A change command with zero ID? That's not an operation, that's a cry for help. !contrib -C 123 better_code_goes_here LUL",
   
-    replaceNoCode: "Changing with nothing? Bro, already your code’s so minimalist it’s just a lonely bracket FailFish NotLikeThis help me help you: !contrib -C 123 function(){ // fire }",
+    replaceNoCode: "Changing with nothing? Bro, already your code's so minimalist it's just a lonely bracket FailFish NotLikeThis help me help you: !contrib -C 123 function(){ // fire }",
   
     deleteNoId: "Dude tryna rm -rf twitch! WutFace chill GoldPLZ try: !contrib -D contrib_id but i bet you forgot the id NotLikeThis use !contrib -ls",
 
-    statusNoId: "Status check, no ID? You’re nerding out big time!!, F5-ing a 404 page in your heart PewPewPew. look: !contrib -status 123 SeemsGood",
+    statusNoId: "Status check, no ID? You're nerding out big time!!, F5-ing a 404 page in your heart PewPewPew. look: !contrib -status 123 SeemsGood",
   
     grepNoFile: "Stop it! HeyGuys You're over-grepping JinxLUL. Seriously, try narrowing it down: !contrib -grep index.js",
 
-    lineNoNumber: "No number for line? Bro, I’m not guessing your code’s horoscope. Gimme digits: !contrib file.js -l 42 console.log('facts') 4Head PogChamp",
+    lineNoNumber: "No number for line? Bro, I'm not guessing your code's horoscope. Gimme digits: !contrib file.js -l 42 console.log('facts') 4Head PogChamp",
   
-    lineNoCode: "You picked a line but sent no code. That’s just a vibe. !contrib file.js -l 42 console.log('answer') PogChamp"
+    lineNoCode: "You picked a line but sent no code. That's just a vibe. !contrib file.js -l 42 console.log('answer') PogChamp"
   };
   
 
@@ -68,8 +69,19 @@ export class IncompleteArgumentCommand implements CommandHandler {
   async execute(context: CommandContext): Promise<boolean> {
     const { channel, username, message, client } = context;
     
-    // Use serious messages by default; change to this.HUH to use humorous ones
-    const messages = this.HUH;
+    // Get message style from settings with proper error handling
+    let messages = this.seriousStuff; // Default to serious messages
+    
+    try {
+      const settings = await db.getSettings();
+      // Only switch to HUH mode if setting explicitly exists and is true
+      if (settings && settings.useHuhMode === true) {
+        messages = this.HUH;
+      }
+    } catch (error) {
+      console.error('Error fetching settings:', error);
+      // Continue with default messages
+    }
     
     if (message.match(/!contrib\s+-A$/i)) {
       await client.say(channel, `@${username} ${messages.appendNoId}`);
