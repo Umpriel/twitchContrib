@@ -1,5 +1,5 @@
 import { sql } from '@vercel/postgres';
-import { DatabaseAdapter, Contribution, User } from './db-interface';
+import { DatabaseAdapter, Contribution, User, Settings } from './db-interface';
 
 // Change let to const
 const connectionPool: unknown = null;
@@ -100,7 +100,7 @@ export class PostgresAdapter implements DatabaseAdapter {
       console.log('Contribution saved, ID:', rows[0]?.id);
       return { id: rows[0]?.id };
     } catch (error) {
-      console.error('Database error:', error);
+      console.error('db-postgres.ts line 103, Database error:', error);
       throw error;
     }
   }
@@ -118,7 +118,7 @@ export class PostgresAdapter implements DatabaseAdapter {
       `;
       return rows as Contribution[];
     } catch (error) {
-      console.error('Error checking similar contributions:', error);
+      console.error('db-postgres.ts line 121 Error checking similar contributions:', error);
       return [];
     }
   }
@@ -260,6 +260,74 @@ export class PostgresAdapter implements DatabaseAdapter {
     } catch (error) {
       console.error('Error deleting contribution:', error);
       throw error;
+    }
+  }
+
+  async getUserByChannelName(channelName: string): Promise<User | null> {
+    const results = await this.query(
+      'SELECT * FROM users WHERE username = $1 AND is_channel_owner = true',
+      [channelName.toLowerCase()]
+    ) as any[];
+    return results && results.length > 0 ? results[0] as User : null;
+  };
+
+  async getSettings(): Promise<Settings | null> {
+    try {
+      // Ensure settings table exists
+      await this.query(`
+        CREATE TABLE IF NOT EXISTS settings (
+          key TEXT PRIMARY KEY,
+          data JSONB
+        )
+      `);
+      
+      const result = await this.query(
+        'SELECT data FROM settings WHERE key = $1',
+        ['app_settings']
+      );
+      
+      if (result && result.length > 0) {
+        return (result[0] as any).data as Settings;
+      }
+      
+      // Create default settings if none exist
+      const defaultSettings: Settings = {
+        welcomeMessage: 'Bot connected and authenticated successfully!',
+        showRejected: true,
+        useHuhMode: false
+      };
+      
+      // Save default settings
+      await this.query(
+        'INSERT INTO settings (key, data) VALUES ($1, $2) ON CONFLICT (key) DO NOTHING',
+        ['app_settings', defaultSettings]
+      );
+      
+      return defaultSettings;
+    } catch (error) {
+      console.error('Error getting settings from database:', error);
+      return null;
+    }
+  }
+
+  async updateSettings(settings: Settings): Promise<boolean> {
+    try {
+      await this.query(`
+        CREATE TABLE IF NOT EXISTS settings (
+          key TEXT PRIMARY KEY,
+          data JSONB
+        )
+      `);
+      
+      await this.query(
+        'INSERT INTO settings (key, data) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET data = $2',
+        ['app_settings', settings]
+      );
+      
+      return true;
+    } catch (error) {
+      console.error('Error updating settings in database:', error);
+      return false;
     }
   }
 } 

@@ -108,3 +108,12 @@ export async function getUserByChannelOwner() {
   const [user] = await db.query('SELECT * FROM users WHERE is_channel_owner = true LIMIT 1');
   return user;
 }
+
+export async function getUserByChannelName(channelName: string) {
+  const db = await getAdapter();
+  const user = await db.query(
+    'SELECT * FROM users WHERE username = ? AND is_channel_owner = 1',
+    [channelName.toLowerCase()]
+  );
+  return user || null;
+}

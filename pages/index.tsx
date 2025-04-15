@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { ChevronDownIcon } from '@heroicons/react/24/outline';
 import { GetServerSideProps } from 'next';
 import Prism from 'prismjs';
 import 'prismjs/themes/prism-tomorrow.css';  // Dark theme
@@ -41,6 +42,7 @@ export default function Home({ initialContributions }: { initialContributions: C
   const [isChannelOwner, setIsChannelOwner] = useState(false);
   const [authCheckComplete, setAuthCheckComplete] = useState(false);
   const [userInfo, setUserInfo] = useState<{ username: string } | null>(null);
+  const [showHistory, setShowHistory] = useState(true);
 
   // Modified refreshContributions to handle manual refresh only
   const refreshContributions = useCallback(async () => {
@@ -74,6 +76,7 @@ export default function Home({ initialContributions }: { initialContributions: C
   }, [contributions]);
 
   useEffect(() => {
+    // pages/index.tsx - update the checkAuth function
     const checkAuth = async () => {
       try {
         const response = await fetch('/api/check-auth');
@@ -87,7 +90,7 @@ export default function Home({ initialContributions }: { initialContributions: C
           const userData = await userResponse.json();
           setUserInfo(userData);
 
-          fetch('/api/init-twitch').catch(console.error);
+          // We don't need to call /api/init-twitch anymore as it's initialized on server startup
         }
 
         setAuthCheckComplete(true);
@@ -204,8 +207,8 @@ export default function Home({ initialContributions }: { initialContributions: C
                     onClick={refreshContributions}
                     disabled={isLoading}
                     className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${isLoading
-                        ? 'bg-gray-700 cursor-not-allowed'
-                        : 'bg-blue-600 hover:bg-blue-700'
+                      ? 'bg-gray-700 cursor-not-allowed'
+                      : 'bg-blue-600 hover:bg-blue-700'
                       }`}
                   >
                     <ArrowPathIcon className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
@@ -273,63 +276,77 @@ export default function Home({ initialContributions }: { initialContributions: C
             </div>
 
             <div className="w-full">
-              <h2 className="text-2xl font-bold mb-6 text-blue-400">History</h2>
-              <div className="space-y-6">
-                {contributions.filter(c => c.status !== 'pending').map(contribution => (
-                  <div key={contribution.id} className="bg-gray-800 rounded-lg p-6 shadow-lg border border-gray-700">
-                    <div className="flex items-center mb-4">
-                      <span className="text-purple-400 font-semibold">{contribution.username}</span>
-                      <span className="mx-2 text-gray-500">•</span>
-                      <span className="text-gray-400">{new Date(contribution.created_at).toLocaleString()}</span>
-                    </div>
-                    <div className="mb-4 p-4 bg-gray-950 rounded-lg border border-gray-700">
-                      <p className="text-gray-300 mb-2">
-                        <span className="text-blue-400 font-semibold">File: </span>
-                        <code className="text-yellow-400">{contribution.filename}</code>
-                      </p>
-                      {contribution.line_number && (
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-blue-400">History</h2>
+                <button
+                  onClick={() => setShowHistory(prev => !prev)}
+                  className="flex items-center gap-1 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded-md transition-all"
+                >
+                  <span>{showHistory ? 'Hide History' : 'Show History'}</span>
+                  <ChevronDownIcon
+                    className={`w-5 h-5 transform transition-transform duration-200 ${showHistory ? 'rotate-180' : 'rotate-0'}`}
+                  />
+                </button>
+              </div>
+
+              {showHistory && (
+                <div className="space-y-6">
+                  {contributions.filter(c => c.status !== 'pending').map(contribution => (
+                    <div key={contribution.id} className="bg-gray-800 rounded-lg p-6 shadow-lg border border-gray-700">
+                      <div className="flex items-center mb-4">
+                        <span className="text-purple-400 font-semibold">{contribution.username}</span>
+                        <span className="mx-2 text-gray-500">•</span>
+                        <span className="text-gray-400">{new Date(contribution.created_at).toLocaleString()}</span>
+                      </div>
+                      <div className="mb-4 p-4 bg-gray-950 rounded-lg border border-gray-700">
                         <p className="text-gray-300 mb-2">
-                          <span className="text-blue-400 font-semibold">Line: </span>
-                          <code className="text-yellow-400">{contribution.line_number}</code>
+                          <span className="text-blue-400 font-semibold">File: </span>
+                          <code className="text-yellow-400">{contribution.filename}</code>
                         </p>
+                        {contribution.line_number && (
+                          <p className="text-gray-300 mb-2">
+                            <span className="text-blue-400 font-semibold">Line: </span>
+                            <code className="text-yellow-400">{contribution.line_number}</code>
+                          </p>
+                        )}
+                      </div>
+                      <div className="relative">
+                        <pre className="font-mono text-sm bg-[#1e1e1e] p-4 rounded-lg border border-gray-700 whitespace-pre overflow-x-auto">
+                          <code className={`language-${getLanguage(contribution.filename)}`}>
+                            {contribution.code}
+                          </code>
+                        </pre>
+                        <button
+                          onClick={() => copyToClipboard(contribution.id, contribution.code)}
+                          className="absolute top-2 right-2 p-2 bg-gray-700 hover:bg-gray-600 rounded-md transition-colors"
+                          title="Copy code"
+                        >
+                          {copiedId === contribution.id ? (
+                            <ClipboardDocumentCheckIcon className="w-5 h-5 text-green-400" />
+                          ) : (
+                            <ClipboardIcon className="w-5 h-5 text-gray-300" />
+                          )}
+                        </button>
+                      </div>
+                      <p className={`mt-4 font-semibold ${contribution.status === 'accepted' ? 'text-green-400' : 'text-red-400'
+                        }`}>
+                        Status: {contribution.status.charAt(0).toUpperCase() + contribution.status.slice(1)}
+                      </p>
+                      {contribution.status === 'accepted' && (
+                        <button
+                          onClick={() => sendToVSCodeWithPath(contribution.id)}
+                          className="mt-2 flex items-center gap-2 px-3 py-2 bg-blue-500 hover:bg-blue-600 rounded-md transition-colors"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M8 4H6a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-2m-4-1v8m0 0l-4-4m4 4l4-4" />
+                          </svg>
+                          <span>Send to VSCode</span>
+                        </button>
                       )}
                     </div>
-                    <div className="relative">
-                      <pre className="font-mono text-sm bg-[#1e1e1e] p-4 rounded-lg border border-gray-700 whitespace-pre overflow-x-auto">
-                        <code className={`language-${getLanguage(contribution.filename)}`}>
-                          {contribution.code}
-                        </code>
-                      </pre>
-                      <button
-                        onClick={() => copyToClipboard(contribution.id, contribution.code)}
-                        className="absolute top-2 right-2 p-2 bg-gray-700 hover:bg-gray-600 rounded-md transition-colors"
-                        title="Copy code"
-                      >
-                        {copiedId === contribution.id ? (
-                          <ClipboardDocumentCheckIcon className="w-5 h-5 text-green-400" />
-                        ) : (
-                          <ClipboardIcon className="w-5 h-5 text-gray-300" />
-                        )}
-                      </button>
-                    </div>
-                    <p className={`mt-4 font-semibold ${contribution.status === 'accepted' ? 'text-green-400' : 'text-red-400'
-                      }`}>
-                      Status: {contribution.status.charAt(0).toUpperCase() + contribution.status.slice(1)}
-                    </p>
-                    {contribution.status === 'accepted' && (
-                      <button
-                        onClick={() => sendToVSCodeWithPath(contribution.id)}
-                        className="mt-2 flex items-center gap-2 px-3 py-2 bg-blue-500 hover:bg-blue-600 rounded-md transition-colors"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M8 4H6a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-2m-4-1v8m0 0l-4-4m4 4l4-4" />
-                        </svg>
-                        <span>Send to VSCode</span>
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
