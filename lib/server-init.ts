@@ -17,7 +17,7 @@ export async function initializeServer(accessToken?: string) {
     try {
       const client = await initAndGetChatClient(accessToken);
       // Verify the client is still connected
-      const isConnected = await verifyChatClient(client);
+      const isConnected = verifyChatClient(client);
       
       if (isConnected) {
         console.log('Existing client is still connected, skipping initialization');

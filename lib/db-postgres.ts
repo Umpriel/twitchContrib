@@ -100,7 +100,7 @@ export class PostgresAdapter implements DatabaseAdapter {
       console.log('Contribution saved, ID:', rows[0]?.id);
       return { id: rows[0]?.id };
     } catch (error) {
-      console.error('Database error:', error);
+      console.error('db-postgres.ts line 103, Database error:', error);
       throw error;
     }
   }
@@ -118,7 +118,7 @@ export class PostgresAdapter implements DatabaseAdapter {
       `;
       return rows as Contribution[];
     } catch (error) {
-      console.error('Error checking similar contributions:', error);
+      console.error('db-postgres.ts line 121 Error checking similar contributions:', error);
       return [];
     }
   }

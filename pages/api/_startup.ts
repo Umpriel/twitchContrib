@@ -26,7 +26,6 @@ if (typeof window === 'undefined' && !isInitialized && !isInitializing) {
       
       console.log(`Searching for channel owner: ${channelName}`);
       
-      // First try direct query for better debugging
       const users = await db.query(
         'SELECT * FROM users WHERE username = ? AND is_channel_owner = 1',
         [channelName]

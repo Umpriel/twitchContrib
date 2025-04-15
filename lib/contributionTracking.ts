@@ -50,7 +50,7 @@ export async function initContributionTracking(client: Client): Promise<void> {
   // Set up a single message handler
   const messageHandler = (channel: string, tags: any, message: string, self: boolean) => {
     if (self) return; // Ignore messages from the bot itself
-    console.log(`Processing message from ${tags.username}: ${message}`);
+    console.log(`Processing message from ${tags.username}: ${message} at contributionTracking.ts line 53`);
     processMessage(channel, tags, message, client).catch(error => {
       console.error('Error processing message:', error);
     });

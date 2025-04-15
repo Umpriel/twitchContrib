@@ -23,7 +23,7 @@ export async function processMessage(channel: string, tags: Record<string, unkno
   }
 
   const username = String(tags['display-name'] || tags['username']);
-  console.log(`Processing message from ${username}: ${message}`);
+  console.log(`Processing message from ${username}: ${message} at tracking.ts line 26`);
 
   // Try each command handler in order
   for (const commandHandler of commands) {

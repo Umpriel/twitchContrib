@@ -1,6 +1,7 @@
 import tmi, { Client } from 'tmi.js';
-import { getUserByChannelOwner } from './db';
+import db, { getUserByChannelOwner } from './db';
 import { User } from './db-interface';  // Make sure this import exists
+import settings from '@/pages/settings';
 
 // Make this a true global singleton using Node.js global object
 // This ensures it persists across module reloads in development
@@ -89,9 +90,17 @@ export const initAndGetChatClient = async (accessToken?: string) => {
       // Test authentication if we have a token
       if (accessToken) {
         try {
+          let settings = await db.getSettings();
+          if (!settings) {
+            settings = {
+              welcomeMessage: 'Bot connected and authenticated successfully!',
+              showRejected: true,
+              useHuhMode: false
+            };
+          }
           const channel = process.env.TWITCH_CHANNEL || 'defaultchannel';
-          await global._twitchChatClient.say(channel, 'Bot connected and authenticated successfully!');
-          console.log('Authentication test successful - bot can send messages');
+          await global._twitchChatClient.say(channel, settings.welcomeMessage || 'Bot connected and authenticated successfully!');
+          console.log(`Authentication test successful for channel ${channel} - bot can send messages`);
         } catch (e) {
           console.error('Authentication test failed - bot cannot send messages:', e);
           throw new Error('Failed to authenticate with Twitch. Please check your token.');
@@ -103,6 +112,7 @@ export const initAndGetChatClient = async (accessToken?: string) => {
       console.error('Failed to initialize chat client:', error);
       // If we failed, allow retry
       global._twitchChatClient = null;
+      console.log('twitchAuth.ts line 107')
       throw error;
     } finally {
       global._twitchIsConnecting = false;

@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
-
 interface Settings {
   welcomeMessage: string;
   showRejected: boolean;
@@ -115,7 +114,6 @@ export default function Settings() {
       <Head>
         <title>Bot Settings</title>
       </Head>
-      
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-2xl font-bold mb-6">Bot Settings</h1>
         
@@ -142,9 +140,9 @@ export default function Settings() {
         </div>
         
         <div className="bg-gray-800 shadow-lg rounded-lg p-6 mb-6">
-          <h2 className="text-xl font-semibold mb-4 border-b border-gray-700 pb-2">Display Settings</h2>
+          <h2 className="text-xl font-semibold mb-4 border-b border-gray-700 pb-2">Chat Settings</h2>
           <div className="space-y-4">
-            <div>
+            {/* <div>
               <label className="flex items-center space-x-2 cursor-pointer">
                 <input 
                   type="checkbox" 
@@ -157,7 +155,7 @@ export default function Settings() {
               <p className="text-gray-400 text-sm mt-1 ml-6">
                 Display rejected contributions in the dashboard
               </p>
-            </div>
+            </div> */}
             
             <div>
               <label className="flex items-center space-x-2 cursor-pointer">
@@ -167,10 +165,10 @@ export default function Settings() {
                   checked={settings.useHuhMode}
                   onChange={(e) => setSettings({...settings, useHuhMode: e.target.checked})}
                 />
-                <span>Use HUH Mode</span>
+                <span>Activate HUH Mode</span>
               </label>
               <p className="text-gray-400 text-sm mt-1 ml-6">
-                Use casual, Twitch-style messages instead of professional ones
+                Unlocks hilarty replies on chat shortcommings!
               </p>
             </div>
           </div>
@@ -183,6 +181,12 @@ export default function Settings() {
             className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
           >
             {isSaving ? 'Saving...' : 'Save Settings'}
+          </button>
+          <button
+            onClick={() => router.push('/')}
+            className="bg-gray-600 hover:bg-gray-700 text-white ml-4 py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-gray-500 disabled:opacity-50"
+          >
+            Back to Home
           </button>
         </div>
       </div>
